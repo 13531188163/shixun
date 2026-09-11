@@ -1,0 +1,238 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="20" y="20" width="1880" height="76" rx="6" fill="#F2F2F2" stroke="#333" stroke-width="2"/>
+<text x="960" y="66" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#222">天气空气质量可视化大屏</text>
+<text x="42" y="65" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="start" fill="#222">LOGO / 系统名称</text>
+<text x="1865" y="64" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="18" font-weight="normal" text-anchor="end" fill="#222">日期  |  时间</text>
+<rect x="460.0" y="120" width="190.4" height="105" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="474.0" y="150" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="start" fill="#222">实时温度</text>
+<text x="555.2" y="192" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#222">00</text>
+<rect x="662.4" y="120" width="190.4" height="105" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="676.4" y="150" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="start" fill="#222">AQI</text>
+<text x="757.6" y="192" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#222">00</text>
+<rect x="864.8" y="120" width="190.4" height="105" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="878.8" y="150" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="start" fill="#222">相对湿度</text>
+<text x="960.0" y="192" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#222">00</text>
+<rect x="1067.2" y="120" width="190.4" height="105" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="1081.2" y="150" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="start" fill="#222">风速</text>
+<text x="1162.4" y="192" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#222">00</text>
+<rect x="1269.6" y="120" width="190.4" height="105" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="1283.6" y="150" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="start" fill="#222">PM2.5</text>
+<text x="1364.8" y="192" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#222">00</text>
+<rect x="20" y="120" width="420" height="230" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="36" y="152" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="start" fill="#222">当前天气概况</text>
+<text x="42" y="190" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="normal" text-anchor="start" fill="#222">城市：北京</text>
+<text x="42" y="228" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="normal" text-anchor="start" fill="#222">天气图标</text>
+<rect x="175" y="180" width="240" height="135" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<text x="295" y="210" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="15" font-weight="normal" text-anchor="middle" fill="#222">温度 / 湿度 / 风向 / 气压</text>
+<circle cx="92" cy="245" r="30" fill="#FFF" stroke="#777" stroke-width="2"/>
+<line x1="92" y1="206" x2="92" y2="192" stroke="#777" stroke-width="2"/>
+<line x1="60" y1="213" x2="48" y2="202" stroke="#777" stroke-width="2"/>
+<line x1="124" y1="213" x2="136" y2="202" stroke="#777" stroke-width="2"/>
+<rect x="20" y="370" width="420" height="235" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="36" y="402" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="start" fill="#222">主要城市天气对比</text>
+<line x1="68" y1="570" x2="410" y2="570" stroke="#777" stroke-width="1.5"/>
+<line x1="68" y1="435" x2="68" y2="570" stroke="#777" stroke-width="1.5"/>
+<rect x="100" y="515" width="18" height="55" rx="0" fill="#D8D8D8" stroke="#666" stroke-width="1"/>
+<rect x="122" y="540" width="18" height="30" rx="0" fill="#EEEEEE" stroke="#666" stroke-width="1"/>
+<text x="120" y="594" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="normal" text-anchor="middle" fill="#222">北京</text>
+<rect x="163" y="490" width="18" height="80" rx="0" fill="#D8D8D8" stroke="#666" stroke-width="1"/>
+<rect x="185" y="515" width="18" height="55" rx="0" fill="#EEEEEE" stroke="#666" stroke-width="1"/>
+<text x="183" y="594" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="normal" text-anchor="middle" fill="#222">上海</text>
+<rect x="226" y="460" width="18" height="110" rx="0" fill="#D8D8D8" stroke="#666" stroke-width="1"/>
+<rect x="248" y="500" width="18" height="70" rx="0" fill="#EEEEEE" stroke="#666" stroke-width="1"/>
+<text x="246" y="594" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="normal" text-anchor="middle" fill="#222">广州</text>
+<rect x="289" y="475" width="18" height="95" rx="0" fill="#D8D8D8" stroke="#666" stroke-width="1"/>
+<rect x="311" y="508" width="18" height="62" rx="0" fill="#EEEEEE" stroke="#666" stroke-width="1"/>
+<text x="309" y="594" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="normal" text-anchor="middle" fill="#222">深圳</text>
+<rect x="352" y="500" width="18" height="70" rx="0" fill="#D8D8D8" stroke="#666" stroke-width="1"/>
+<rect x="374" y="525" width="18" height="45" rx="0" fill="#EEEEEE" stroke="#666" stroke-width="1"/>
+<text x="372" y="594" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="normal" text-anchor="middle" fill="#222">杭州</text>
+<rect x="20" y="625" width="420" height="435" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="36" y="657" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="start" fill="#222">未来7天天气预报</text>
+<rect x="36" y="682" width="48" height="88" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1"/>
+<text x="60" y="705" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#222">今</text>
+<circle cx="60" cy="734" r="10" fill="#FFF" stroke="#888" stroke-width="1"/>
+<text x="60" y="759" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">°C</text>
+<rect x="92" y="682" width="48" height="88" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1"/>
+<text x="116" y="705" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#222">明</text>
+<circle cx="116" cy="734" r="10" fill="#FFF" stroke="#888" stroke-width="1"/>
+<text x="116" y="759" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">°C</text>
+<rect x="148" y="682" width="48" height="88" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1"/>
+<text x="172" y="705" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#222">一</text>
+<circle cx="172" cy="734" r="10" fill="#FFF" stroke="#888" stroke-width="1"/>
+<text x="172" y="759" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">°C</text>
+<rect x="204" y="682" width="48" height="88" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1"/>
+<text x="228" y="705" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#222">二</text>
+<circle cx="228" cy="734" r="10" fill="#FFF" stroke="#888" stroke-width="1"/>
+<text x="228" y="759" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">°C</text>
+<rect x="260" y="682" width="48" height="88" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1"/>
+<text x="284" y="705" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#222">三</text>
+<circle cx="284" cy="734" r="10" fill="#FFF" stroke="#888" stroke-width="1"/>
+<text x="284" y="759" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">°C</text>
+<rect x="316" y="682" width="48" height="88" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1"/>
+<text x="340" y="705" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#222">四</text>
+<circle cx="340" cy="734" r="10" fill="#FFF" stroke="#888" stroke-width="1"/>
+<text x="340" y="759" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">°C</text>
+<rect x="372" y="682" width="48" height="88" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1"/>
+<text x="396" y="705" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="middle" fill="#222">五</text>
+<circle cx="396" cy="734" r="10" fill="#FFF" stroke="#888" stroke-width="1"/>
+<text x="396" y="759" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">°C</text>
+<line x1="68" y1="1018" x2="410" y2="1018" stroke="#777" stroke-width="1.5"/>
+<line x1="68" y1="815" x2="68" y2="1018" stroke="#777" stroke-width="1.5"/>
+<line x1="75" y1="900" x2="125" y2="888" stroke="#777" stroke-width="2"/>
+<line x1="125" y1="888" x2="175" y2="910" stroke="#777" stroke-width="2"/>
+<line x1="175" y1="910" x2="225" y2="918" stroke="#777" stroke-width="2"/>
+<line x1="225" y1="918" x2="275" y2="904" stroke="#777" stroke-width="2"/>
+<line x1="275" y1="904" x2="325" y2="891" stroke="#777" stroke-width="2"/>
+<line x1="325" y1="891" x2="375" y2="885" stroke="#777" stroke-width="2"/>
+<circle cx="75" cy="900" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="125" cy="888" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="175" cy="910" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="225" cy="918" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="275" cy="904" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="325" cy="891" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="375" cy="885" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<line x1="75" y1="955" x2="125" y2="950" stroke="#777" stroke-width="2"/>
+<line x1="125" y1="950" x2="175" y2="963" stroke="#777" stroke-width="2"/>
+<line x1="175" y1="963" x2="225" y2="971" stroke="#777" stroke-width="2"/>
+<line x1="225" y1="971" x2="275" y2="966" stroke="#777" stroke-width="2"/>
+<line x1="275" y1="966" x2="325" y2="959" stroke="#777" stroke-width="2"/>
+<line x1="325" y1="959" x2="375" y2="957" stroke="#777" stroke-width="2"/>
+<circle cx="75" cy="955" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="125" cy="950" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="175" cy="963" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="225" cy="971" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="275" cy="966" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="325" cy="959" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="375" cy="957" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<rect x="460" y="245" width="1000" height="540" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="478" y="278" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="22" font-weight="bold" text-anchor="start" fill="#222">全国天气与空气质量分布</text>
+<rect x="480" y="300" width="160" height="200" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<text x="560" y="330" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#222">AQI 图例</text>
+<circle cx="505" cy="365" r="7" fill="#FFF" stroke="#777" stroke-width="1"/>
+<text x="523" y="370" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" fill="#222">优</text>
+<circle cx="505" cy="393" r="7" fill="#FFF" stroke="#777" stroke-width="1"/>
+<text x="523" y="398" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" fill="#222">良</text>
+<circle cx="505" cy="421" r="7" fill="#FFF" stroke="#777" stroke-width="1"/>
+<text x="523" y="426" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" fill="#222">轻度</text>
+<circle cx="505" cy="449" r="7" fill="#FFF" stroke="#777" stroke-width="1"/>
+<text x="523" y="454" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" fill="#222">中度</text>
+<circle cx="505" cy="477" r="7" fill="#FFF" stroke="#777" stroke-width="1"/>
+<text x="523" y="482" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" fill="#222">重度</text>
+<rect x="660" y="310" width="620" height="420" rx="4" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<text x="970.0" y="350" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#222">中国地图区域（低保真占位）</text>
+<polygon points="780,470 840,405 920,415 970,380 1070,400 1115,455 1180,480 1160,530 1215,575 1160,625 1080,610 1030,665 960,635 905,670 835,625 795,565 750,530" fill="#F4F4F4" stroke="#777" stroke-width="2"/>
+<circle cx="1050" cy="470" r="10" fill="#FFF" stroke="#555" stroke-width="2"/>
+<text x="1064" y="475" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="start" fill="#222">北京</text>
+<circle cx="1125" cy="550" r="10" fill="#FFF" stroke="#555" stroke-width="2"/>
+<text x="1139" y="555" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="start" fill="#222">上海</text>
+<circle cx="1030" cy="615" r="10" fill="#FFF" stroke="#555" stroke-width="2"/>
+<text x="1044" y="620" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="start" fill="#222">广州</text>
+<circle cx="1065" cy="640" r="10" fill="#FFF" stroke="#555" stroke-width="2"/>
+<text x="1079" y="645" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="start" fill="#222">深圳</text>
+<circle cx="1100" cy="580" r="10" fill="#FFF" stroke="#555" stroke-width="2"/>
+<text x="1114" y="585" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="13" font-weight="bold" text-anchor="start" fill="#222">杭州</text>
+<rect x="1295" y="325" width="145" height="95" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<text x="1367" y="355" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#222">城市总数</text>
+<text x="1367" y="392" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="25" font-weight="bold" text-anchor="middle" fill="#222">000</text>
+<rect x="1295" y="435" width="145" height="95" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<text x="1367" y="465" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#222">优良城市</text>
+<text x="1367" y="502" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="25" font-weight="bold" text-anchor="middle" fill="#222">000</text>
+<rect x="1295" y="545" width="145" height="95" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<text x="1367" y="575" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#222">污染城市</text>
+<text x="1367" y="612" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="25" font-weight="bold" text-anchor="middle" fill="#222">000</text>
+<rect x="460" y="805" width="430" height="255" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="476" y="837" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="19" font-weight="bold" text-anchor="start" fill="#222">城市空气质量排名 TOP10</text>
+<line x1="480" y1="870" x2="870" y2="870" stroke="#777" stroke-width="1"/>
+<line x1="480" y1="895" x2="870" y2="895" stroke="#DDD" stroke-width="1"/>
+<line x1="480" y1="921" x2="870" y2="921" stroke="#DDD" stroke-width="1"/>
+<line x1="480" y1="947" x2="870" y2="947" stroke="#DDD" stroke-width="1"/>
+<line x1="480" y1="973" x2="870" y2="973" stroke="#DDD" stroke-width="1"/>
+<line x1="480" y1="999" x2="870" y2="999" stroke="#DDD" stroke-width="1"/>
+<line x1="480" y1="1025" x2="870" y2="1025" stroke="#DDD" stroke-width="1"/>
+<line x1="530" y1="860" x2="530" y2="1045" stroke="#DDD" stroke-width="1"/>
+<line x1="625" y1="860" x2="625" y2="1045" stroke="#DDD" stroke-width="1"/>
+<line x1="715" y1="860" x2="715" y2="1045" stroke="#DDD" stroke-width="1"/>
+<line x1="805" y1="860" x2="805" y2="1045" stroke="#DDD" stroke-width="1"/>
+<rect x="905" y="805" width="250" height="255" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="920" y="837" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="19" font-weight="bold" text-anchor="start" fill="#222">预警统计</text>
+<circle cx="1030" cy="950" r="58" fill="#FFF" stroke="#777" stroke-width="10"/>
+<text x="1030" y="955" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="15" font-weight="bold" text-anchor="middle" fill="#222">环形图</text>
+<rect x="1170" y="805" width="350" height="255" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="1185" y="837" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="19" font-weight="bold" text-anchor="start" fill="#222">近30天 AQI 变化趋势</text>
+<line x1="1200" y1="1025" x2="1495" y2="1025" stroke="#777" stroke-width="1.5"/>
+<line x1="1200" y1="885" x2="1200" y2="1025" stroke="#777" stroke-width="1.5"/>
+<line x1="1220" y1="975" x2="1260" y2="963" stroke="#777" stroke-width="2"/>
+<line x1="1260" y1="963" x2="1300" y2="957" stroke="#777" stroke-width="2"/>
+<line x1="1300" y1="957" x2="1340" y2="978" stroke="#777" stroke-width="2"/>
+<line x1="1340" y1="978" x2="1380" y2="965" stroke="#777" stroke-width="2"/>
+<line x1="1380" y1="965" x2="1420" y2="955" stroke="#777" stroke-width="2"/>
+<line x1="1420" y1="955" x2="1460" y2="967" stroke="#777" stroke-width="2"/>
+<circle cx="1220" cy="975" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1260" cy="963" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1300" cy="957" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1340" cy="978" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1380" cy="965" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1420" cy="955" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1460" cy="967" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<rect x="1480" y="120" width="420" height="250" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="1496" y="152" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="start" fill="#222">空气质量分析</text>
+<text x="1498" y="186" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="15" font-weight="normal" text-anchor="start" fill="#222">近24小时 AQI 变化趋势</text>
+<line x1="1525" y1="335" x2="1870" y2="335" stroke="#777" stroke-width="1.5"/>
+<line x1="1525" y1="210" x2="1525" y2="335" stroke="#777" stroke-width="1.5"/>
+<line x1="1540" y1="285" x2="1585" y2="265" stroke="#777" stroke-width="2"/>
+<line x1="1585" y1="265" x2="1630" y2="277" stroke="#777" stroke-width="2"/>
+<line x1="1630" y1="277" x2="1675" y2="300" stroke="#777" stroke-width="2"/>
+<line x1="1675" y1="300" x2="1720" y2="292" stroke="#777" stroke-width="2"/>
+<line x1="1720" y1="292" x2="1765" y2="275" stroke="#777" stroke-width="2"/>
+<line x1="1765" y1="275" x2="1810" y2="267" stroke="#777" stroke-width="2"/>
+<line x1="1810" y1="267" x2="1855" y2="281" stroke="#777" stroke-width="2"/>
+<circle cx="1540" cy="285" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1585" cy="265" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1630" cy="277" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1675" cy="300" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1720" cy="292" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1765" cy="275" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1810" cy="267" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<circle cx="1855" cy="281" r="4" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<rect x="1480" y="390" width="420" height="205" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="1496" y="422" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="start" fill="#222">主要污染物浓度</text>
+<rect x="1512" y="510" width="28" height="55" rx="0" fill="#DDD" stroke="#777" stroke-width="1"/>
+<text x="1526" y="586" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">PM2.5</text>
+<rect x="1574" y="480" width="28" height="85" rx="0" fill="#DDD" stroke="#777" stroke-width="1"/>
+<text x="1588" y="586" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">PM10</text>
+<rect x="1636" y="530" width="28" height="35" rx="0" fill="#DDD" stroke="#777" stroke-width="1"/>
+<text x="1650" y="586" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">SO2</text>
+<rect x="1698" y="505" width="28" height="60" rx="0" fill="#DDD" stroke="#777" stroke-width="1"/>
+<text x="1712" y="586" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">NO2</text>
+<rect x="1760" y="540" width="28" height="25" rx="0" fill="#DDD" stroke="#777" stroke-width="1"/>
+<text x="1774" y="586" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">CO</text>
+<rect x="1822" y="465" width="28" height="100" rx="0" fill="#DDD" stroke="#777" stroke-width="1"/>
+<text x="1836" y="586" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="11" font-weight="normal" text-anchor="middle" fill="#222">O3</text>
+<rect x="1480" y="615" width="420" height="195" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="1496" y="647" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="start" fill="#222">空气质量预警</text>
+<rect x="1500" y="670" width="180" height="110" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<rect x="1700" y="670" width="180" height="110" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<text x="1590" y="715" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#222">等级 / 状态</text>
+<text x="1790" y="715" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#222">防护建议</text>
+<rect x="1480" y="830" width="420" height="230" rx="8" fill="#FAFAFA" stroke="#666" stroke-width="2"/>
+<text x="1496" y="862" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="start" fill="#222">健康与生活建议</text>
+<rect x="1498" y="885" width="86" height="145" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<circle cx="1541" cy="925" r="18" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<text x="1541" y="965" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#222">运动</text>
+<text x="1541" y="994" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="12" font-weight="normal" text-anchor="middle" fill="#222">建议</text>
+<rect x="1596" y="885" width="86" height="145" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<circle cx="1639" cy="925" r="18" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<text x="1639" y="965" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#222">口罩</text>
+<text x="1639" y="994" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="12" font-weight="normal" text-anchor="middle" fill="#222">建议</text>
+<rect x="1694" y="885" width="86" height="145" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<circle cx="1737" cy="925" r="18" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<text x="1737" y="965" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#222">开窗</text>
+<text x="1737" y="994" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="12" font-weight="normal" text-anchor="middle" fill="#222">建议</text>
+<rect x="1792" y="885" width="86" height="145" rx="5" fill="#FFFFFF" stroke="#AAA" stroke-width="1.5"/>
+<circle cx="1835" cy="925" r="18" fill="#FFF" stroke="#777" stroke-width="1.5"/>
+<text x="1835" y="965" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#222">穿衣</text>
+<text x="1835" y="994" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="12" font-weight="normal" text-anchor="middle" fill="#222">建议</text>
+<text x="24" y="1072" font-family="Noto Sans CJK SC, Microsoft YaHei, Arial, sans-serif" font-size="14" font-weight="normal" text-anchor="start" fill="#555">Figma低保真线框｜画布 1920×1080｜所有模块均可在Figma中继续拆分和编辑</text>
+</svg>
