@@ -120,7 +120,9 @@ def get_latest_weather(
     sql = (
         f"SELECT {_WEATHER_SELECT} FROM weather_data "
         f"WHERE {where_sql} "
-        "ORDER BY STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') DESC, id DESC "
+        "ORDER BY STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') DESC, "
+        "CASE WHEN district IS NULL OR TRIM(district) = '' THEN 1 ELSE 0 END ASC, "
+        "district ASC, id ASC "
         "LIMIT 1"
     )
     with connection_scope() as connection:
@@ -145,10 +147,7 @@ def get_weather_history(
 
     _require_city(city)
     requested_limit = days if limit is None else limit
-    if isinstance(requested_limit, bool) or not isinstance(requested_limit, int):
-        raise ValueError("limit must be an integer")
-    if not 1 <= requested_limit <= _MAX_HISTORY_LIMIT:
-        raise ValueError(f"limit must be between 1 and {_MAX_HISTORY_LIMIT}")
+    _validate_history_limit(requested_limit)
 
     clauses, params = _location_filters(province=province, city=city, district=district)
     where_sql = " AND ".join(clauses)
@@ -159,6 +158,50 @@ def get_weather_history(
         "LIMIT %s"
     )
     params.append(requested_limit)
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return list(cursor.fetchall())
+
+
+def get_weather_history_by_date(
+    city: str,
+    province: str | None = None,
+    district: str | None = None,
+    days: int = _DEFAULT_HISTORY_LIMIT,
+) -> list[dict[str, Any]]:
+    """Return one stable representative row for each of the latest dates.
+
+    ``weather_data`` has multiple district rows per city and date.  A window
+    function performs the de-duplication in MySQL, so the service does not
+    need to guess how many district rows to over-fetch from the large table.
+    """
+
+    _require_city(city)
+    _validate_history_limit(days)
+    clauses, params = _location_filters(province=province, city=city, district=district)
+    where_sql = " AND ".join(clauses)
+    sql = (
+        "SELECT "
+        f"{_WEATHER_SELECT} "
+        "FROM ("
+        "SELECT "
+        f"{_WEATHER_SELECT}, "
+        "ROW_NUMBER() OVER ("
+        "PARTITION BY date "
+        "ORDER BY CASE WHEN district IS NULL OR TRIM(district) = '' THEN 1 ELSE 0 END ASC, "
+        "district ASC, id ASC"
+        ") AS representative_rank "
+        "FROM weather_data "
+        f"WHERE {where_sql} "
+        "AND date IS NOT NULL AND TRIM(date) <> '' "
+        "AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+        ") AS ranked "
+        "WHERE representative_rank = 1 "
+        "ORDER BY STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') DESC, id ASC "
+        "LIMIT %s"
+    )
+    params.append(days)
     with connection_scope() as connection:
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
@@ -191,7 +234,8 @@ def get_distinct_provinces(limit: int = _MAX_LOCATION_LIMIT) -> list[dict[str, A
     """Return distinct raw province values with a hard upper bound."""
 
     _validate_location_limit(limit)
-    sql = "SELECT DISTINCT province FROM weather_data WHERE province IS NOT NULL ORDER BY province LIMIT %s"
+    # Service 层负责归一化和排序；省略数据库排序可避免大表 DISTINCT 的全量 filesort。
+    sql = "SELECT DISTINCT province FROM weather_data WHERE province IS NOT NULL LIMIT %s"
     with connection_scope() as connection:
         with connection.cursor() as cursor:
             cursor.execute(sql, [limit])
@@ -208,7 +252,7 @@ def get_distinct_cities(province: str, limit: int = _MAX_LOCATION_LIMIT) -> list
     clause, params = _in_filter("province", province_values)
     sql = (
         "SELECT DISTINCT city FROM weather_data "
-        f"WHERE {clause} AND city IS NOT NULL ORDER BY city LIMIT %s"
+        f"WHERE {clause} AND city IS NOT NULL LIMIT %s"
     )
     params.append(limit)
     with connection_scope() as connection:
@@ -233,7 +277,7 @@ def get_distinct_districts(
     clauses.append("TRIM(district) <> ''")
     sql = (
         "SELECT DISTINCT district FROM weather_data "
-        f"WHERE {' AND '.join(clauses)} ORDER BY district LIMIT %s"
+        f"WHERE {' AND '.join(clauses)} LIMIT %s"
     )
     params.append(limit)
     with connection_scope() as connection:
@@ -242,8 +286,34 @@ def get_distinct_districts(
             return list(cursor.fetchall())
 
 
+def get_weather_statistics() -> dict[str, Any]:
+    """Return aggregate facts needed by the dashboard overview.
+
+    The count and latest-date aggregation run in MySQL and return one row;
+    they never materialize the weather table in Python.  ``date`` is parsed
+    explicitly because it is stored as a string in the source schema.
+    """
+
+    sql = (
+        "SELECT COUNT(*) AS record_count, "
+        "MAX(STR_TO_DATE(NULLIF(TRIM(date), ''), '%Y-%m-%d')) AS latest_date "
+        "FROM weather_data"
+    )
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            return cursor.fetchone() or {"record_count": 0, "latest_date": None}
+
+
 def _validate_location_limit(limit: int) -> None:
     if isinstance(limit, bool) or not isinstance(limit, int):
         raise ValueError("limit must be an integer")
     if not 1 <= limit <= _MAX_LOCATION_LIMIT:
         raise ValueError(f"limit must be between 1 and {_MAX_LOCATION_LIMIT}")
+
+
+def _validate_history_limit(limit: int) -> None:
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        raise ValueError("limit must be an integer")
+    if not 1 <= limit <= _MAX_HISTORY_LIMIT:
+        raise ValueError(f"limit must be between 1 and {_MAX_HISTORY_LIMIT}")

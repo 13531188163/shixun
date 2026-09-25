@@ -88,7 +88,7 @@ def get_air_quality_ranking(
     sql = (
         f"SELECT {_AIR_SELECT} FROM air_quality_data "
         f"WHERE {' AND '.join(clauses)} "
-        f"ORDER BY CAST(TRIM(aqi) AS UNSIGNED) {direction}, id ASC LIMIT %s"
+        f"ORDER BY CAST(TRIM(aqi) AS UNSIGNED) {direction}, city ASC, id ASC LIMIT %s"
     )
     params.append(limit)
     with connection_scope() as connection:
@@ -133,3 +133,13 @@ def get_all_air_quality(
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
             return list(cursor.fetchall())
+
+
+def get_air_quality_statistics() -> dict[str, Any]:
+    """Return count and newest snapshot timestamp for dashboard statistics."""
+
+    sql = "SELECT COUNT(*) AS record_count, MAX(created_at) AS latest_snapshot FROM air_quality_data"
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            return cursor.fetchone() or {"record_count": 0, "latest_snapshot": None}
