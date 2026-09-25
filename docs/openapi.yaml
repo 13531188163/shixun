@@ -1,0 +1,532 @@
+openapi: 3.0.3
+info:
+  title: weatherdemo Weather and Air Quality API
+  version: 1.0.0
+  description: >
+    weatherdemo Phase 1 API contract. The database is the source of truth;
+    dashboard-reference.png is only a UI reference. latest means the newest
+    record available in the historical database and does not mean realtime.
+servers:
+  - url: http://localhost:5000
+    description: Local Flask server
+tags:
+  - name: System
+    description: Application and database health
+  - name: Location
+    description: Province, city and district selectors
+  - name: Weather
+    description: Historical weather records and comparisons
+  - name: Air Quality
+    description: AQI snapshots, ranking and distribution
+  - name: Dashboard
+    description: First-screen aggregate data
+paths:
+  /api/health:
+    get:
+      tags: [System]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/locations/provinces:
+    get:
+      tags: [Location]
+      summary: List normalized provinces
+      operationId: listProvinces
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/locations/cities:
+    get:
+      tags: [Location]
+      summary: List cities for a province
+      operationId: listCities
+      parameters:
+        - $ref: '#/components/parameters/ProvinceRequired'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/locations/districts:
+    get:
+      tags: [Location]
+      summary: List districts for a province and city
+      operationId: listDistricts
+      parameters:
+        - $ref: '#/components/parameters/ProvinceRequired'
+        - $ref: '#/components/parameters/CityRequired'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/weather/latest:
+    get:
+      tags: [Weather]
+      summary: Get the latest available weather record
+      description: >
+        Selects by parsed weather_data.date. If district is omitted, a stable
+        representative source row is selected and the returned district is explicit.
+      operationId: getLatestWeather
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityRequired'
+        - $ref: '#/components/parameters/DistrictOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/weather/trend:
+    get:
+      tags: [Weather]
+      summary: Get historical weather trend
+      description: Returns historical records for the requested number of dates; it is not a forecast.
+      operationId: getWeatherTrend
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityRequired'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/Days'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/weather/city-comparison:
+    get:
+      tags: [Weather]
+      summary: Compare latest weather for multiple cities
+      operationId: compareCityWeather
+      parameters:
+        - $ref: '#/components/parameters/Cities'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/air-quality/latest:
+    get:
+      tags: [Air Quality]
+      summary: Get the latest AQI snapshot for a city
+      description: createdAt is the snapshot/import timestamp because the table has no observation date.
+      operationId: getLatestAirQuality
+      parameters:
+        - $ref: '#/components/parameters/CityRequired'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/air-quality/ranking:
+    get:
+      tags: [Air Quality]
+      summary: Rank cities by AQI
+      operationId: rankAirQuality
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Order'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/air-quality/distribution:
+    get:
+      tags: [Air Quality]
+      summary: Count cities by AQI status
+      operationId: getAirQualityDistribution
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/dashboard/overview:
+    get:
+      tags: [Dashboard]
+      summary: Get first-screen dashboard overview
+      description: >
+        Returns location, latestWeather, latestAirQuality and basicStatistics.
+        Historical trends, rankings and distributions remain separate endpoints.
+      operationId: getDashboardOverview
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityRequired'
+        - $ref: '#/components/parameters/DistrictOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  parameters:
+    ProvinceRequired:
+      name: province
+      in: query
+      required: true
+      description: Normalized province name or a registered raw alias.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 50
+      example: 北京
+    ProvinceOptional:
+      name: province
+      in: query
+      required: false
+      description: Normalized province name or a registered raw alias.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 50
+      example: 北京
+    CityRequired:
+      name: city
+      in: query
+      required: true
+      description: Normalized city name or a registered raw alias.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 50
+      example: 北京
+    DistrictOptional:
+      name: district
+      in: query
+      required: false
+      description: Original district name; omitted for a stable representative row.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 50
+      example: 东城区
+    Days:
+      name: days
+      in: query
+      required: false
+      description: Number of historical dates to return.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 90
+        default: 7
+      example: 7
+    Cities:
+      name: cities
+      in: query
+      required: true
+      description: Comma-separated city names; 1 to 10 names.
+      schema:
+        type: string
+        pattern: '^[^,]+(,[^,]+){0,9}$'
+      example: 北京,上海,广州,深圳,杭州
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Maximum number of ranking rows.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      example: 10
+    Order:
+      name: order
+      in: query
+      required: false
+      description: asc ranks lower AQI first; desc ranks higher AQI first.
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: asc
+      example: asc
+  schemas:
+    ApiResponse:
+      type: object
+      required: [code, message, data]
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: success
+        data:
+          nullable: true
+          description: Endpoint-specific object or array payload.
+          oneOf:
+            - type: object
+            - type: array
+        meta:
+          type: object
+          additionalProperties: true
+    ErrorResponse:
+      type: object
+      required: [code, message, data]
+      properties:
+        code:
+          type: integer
+          example: 400
+        message:
+          type: string
+          example: invalid query parameter
+        data:
+          nullable: true
+          example: null
+    HealthStatus:
+      type: object
+      required: [application, database, checkedAt]
+      properties:
+        application:
+          type: string
+          enum: [ok]
+        database:
+          type: string
+          enum: [ok]
+        checkedAt:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
+    WeatherLatest:
+      type: object
+      required: [province, city, district, date, weather, maxTemp, minTemp, avgWind, maxWind, precipitation]
+      properties:
+        province:
+          type: string
+          example: 北京
+        city:
+          type: string
+          example: 北京
+        district:
+          type: string
+          nullable: true
+          example: 东城区
+        date:
+          type: string
+          format: date
+          example: '2026-03-31'
+        weather:
+          type: string
+          nullable: true
+          example: 阴
+        maxTemp:
+          type: number
+          format: float
+          nullable: true
+          example: 18.2
+        minTemp:
+          type: number
+          format: float
+          nullable: true
+          example: 5.6
+        avgWind:
+          type: number
+          format: float
+          nullable: true
+          example: 1.56
+        maxWind:
+          type: number
+          format: float
+          nullable: true
+          example: 9.5
+        precipitation:
+          type: number
+          format: float
+          nullable: true
+          example: 0
+    WeatherTrend:
+      type: object
+      required: [date, weather, maxTemp, minTemp, avgWind, maxWind, precipitation]
+      properties:
+        date:
+          type: string
+          format: date
+        weather:
+          type: string
+          nullable: true
+        maxTemp:
+          type: number
+          nullable: true
+        minTemp:
+          type: number
+          nullable: true
+        avgWind:
+          type: number
+          nullable: true
+        maxWind:
+          type: number
+          nullable: true
+        precipitation:
+          type: number
+          nullable: true
+    WeatherComparison:
+      type: object
+      required: [province, city, district, date, weather, maxTemp, minTemp]
+      properties:
+        province:
+          type: string
+        city:
+          type: string
+        district:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date
+        weather:
+          type: string
+          nullable: true
+        maxTemp:
+          type: number
+          nullable: true
+        minTemp:
+          type: number
+          nullable: true
+    AirQuality:
+      type: object
+      required: [city, province, aqi, status, createdAt]
+      properties:
+        city:
+          type: string
+          example: 北京
+        province:
+          type: string
+          example: 北京
+        aqi:
+          type: integer
+          nullable: true
+          example: 105
+        status:
+          type: string
+          nullable: true
+          example: 轻度
+        createdAt:
+          type: string
+          pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
+          example: '2026-05-31 17:40:21'
+    AirQualityRanking:
+      type: object
+      required: [rank, city, province, aqi, status]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        city:
+          type: string
+        province:
+          type: string
+        aqi:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          nullable: true
+    AirQualityDistribution:
+      type: object
+      required: [status, count]
+      properties:
+        status:
+          type: string
+        count:
+          type: integer
+          minimum: 0
+    DashboardOverview:
+      type: object
+      required: [location, latestWeather, latestAirQuality, basicStatistics]
+      properties:
+        location:
+          type: object
+          required: [province, city, district]
+          properties:
+            province:
+              type: string
+            city:
+              type: string
+            district:
+              type: string
+              nullable: true
+        latestWeather:
+          $ref: '#/components/schemas/WeatherLatest'
+        latestAirQuality:
+          allOf:
+            - $ref: '#/components/schemas/AirQuality'
+          nullable: true
+        basicStatistics:
+          type: object
+          required: [weatherRecordCount, airQualityRecordCount, weatherLatestDate, airQualitySnapshotAt]
+          properties:
+            weatherRecordCount:
+              type: integer
+              minimum: 0
+            airQualityRecordCount:
+              type: integer
+              minimum: 0
+            weatherLatestDate:
+              type: string
+              format: date
+              nullable: true
+            airQualitySnapshotAt:
+              type: string
+              pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
+              nullable: true
+  responses:
+    SuccessResponse:
+      description: Successful response. The data shape is defined by the endpoint contract.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiResponse'
+    BadRequest:
+      description: Invalid or missing query parameter.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Requested location or business record does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServerError:
+      description: Unexpected application or database error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

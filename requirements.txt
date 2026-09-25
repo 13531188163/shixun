@@ -1,0 +1,4 @@
+Flask>=3.0,<4
+Flask-Cors>=4.0,<7
+PyMySQL>=1.1,<2
+python-dotenv>=1.0,<2

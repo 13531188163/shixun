@@ -1,0 +1,22 @@
+.env
+.env.*
+!.env.example
+
+__pycache__/
+**/__pycache__/
+*.pyc
+*.py[cod]
+*.pyo
+
+.venv/
+venv/
+env/
+
+.idea/
+.vscode/
+
+*.log
+
+# Keep the large local source database dumps out of normal Git commits.
+/database/weather_data.sql
+/weather_db.sql
