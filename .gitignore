@@ -12,6 +12,10 @@ __pycache__/
 venv/
 env/
 
+# Frontend dependencies and build output.
+node_modules/
+dist/
+
 .idea/
 .vscode/
 
