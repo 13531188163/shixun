@@ -82,7 +82,16 @@ select {
   border: 1px solid var(--border-soft);
   border-radius: 6px;
   outline: none;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-primary) 50%),
+    linear-gradient(135deg, var(--color-primary) 50%, transparent 50%);
+  background-position: calc(100% - 13px) 50%, calc(100% - 8px) 50%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px, 5px 5px;
 }
+
+select:hover { border-color: var(--color-primary); }
 
 select:focus {
   border-color: var(--accent-cyan);

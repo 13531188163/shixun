@@ -37,16 +37,16 @@ const metrics = [
 <style scoped>
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 9px;
 }
 
 .metric-card {
   display: flex;
-  min-height: 68px;
+  min-height: 52px;
   flex-direction: column;
   justify-content: space-between;
-  padding: 11px 12px;
+  padding: 8px 9px;
   background: rgb(8 54 101 / 42%);
   border: 1px solid rgb(42 145 206 / 26%);
   border-radius: 6px;
@@ -59,8 +59,9 @@ const metrics = [
 
 .metric-card strong {
   color: var(--text-primary);
-  font-size: 17px;
+  font-size: clamp(17px, 1.25vw, var(--font-metric));
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .metric-card small {
@@ -70,5 +71,10 @@ const metrics = [
 
 .aqi-card strong {
   color: var(--accent-cyan);
+}
+
+@media (max-width: 680px) {
+  .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-card strong { font-size: 20px; }
 }
 </style>

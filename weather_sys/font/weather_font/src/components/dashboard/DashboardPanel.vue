@@ -8,10 +8,10 @@ defineProps({
 <template>
   <article class="dashboard-panel">
     <header class="panel-header">
-      <div>
+      <div class="panel-heading-copy">
         <h2 class="panel-title">{{ title }}</h2>
-        <p v-if="subtitle" class="panel-subtitle">{{ subtitle }}</p>
       </div>
+      <p v-if="subtitle" class="panel-subtitle" :title="subtitle">{{ subtitle }}</p>
       <slot name="header" />
     </header>
     <div class="panel-body">

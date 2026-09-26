@@ -19,7 +19,7 @@ const props = defineProps({
         <div>
           <span class="area-kicker">CURRENT DATA REGION</span>
           <h3>{{ location?.province || '--' }} · {{ location?.city || '--' }}</h3>
-          <p>{{ location?.district || '稳定代表区县' }} · source-backed latest snapshot</p>
+          <p>{{ location?.district || '稳定代表区县' }} · 最新可用记录</p>
         </div>
         <div class="center-aqi">
           <span>AQI</span>
@@ -32,10 +32,14 @@ const props = defineProps({
         <div class="visual-grid" aria-hidden="true" />
         <span class="visual-orbit orbit-one" aria-hidden="true" />
         <span class="visual-orbit orbit-two" aria-hidden="true" />
-        <span class="visual-core" aria-hidden="true">{{ weather?.weather || 'DATA' }}</span>
+        <div class="visual-core" aria-label="当前天气核心数据">
+          <span>{{ weather?.weather || '--' }}</span>
+          <strong>{{ formatTemperature(weather?.maxTemp) }}</strong>
+          <small>最高温</small>
+        </div>
         <div class="visual-caption">
           <b>区域数据聚合视图</b>
-          <span>MAP PLACEHOLDER · GEO DATA FUTURE ENHANCEMENT</span>
+          <span>区域空间视图 · 地理边界待接入</span>
         </div>
       </div>
 
@@ -52,7 +56,9 @@ const props = defineProps({
 <style scoped>
 .center-overview {
   display: flex;
-  min-height: 486px;
+  min-height: 0;
+  height: 100%;
+  flex: 1;
   flex-direction: column;
   gap: 18px;
 }
@@ -109,7 +115,7 @@ h3 {
 .data-visual-placeholder {
   position: relative;
   display: grid;
-  min-height: 300px;
+  min-height: 0;
   flex: 1;
   place-items: center;
   overflow: hidden;
@@ -152,12 +158,26 @@ h3 {
   width: 100px;
   height: 100px;
   place-items: center;
+  align-content: center;
+  gap: 2px;
   color: var(--text-primary);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   background: radial-gradient(circle, rgb(62 229 255 / 44%), rgb(8 58 101 / 80%) 58%, transparent 64%);
   border-color: var(--accent-cyan);
   box-shadow: 0 0 32px rgb(32 201 255 / 50%);
+}
+
+.visual-core strong {
+  color: var(--color-text);
+  font-size: 19px;
+  line-height: 1;
+}
+
+.visual-core small {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  letter-spacing: 0.04em;
 }
 
 .visual-caption {

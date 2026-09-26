@@ -32,6 +32,16 @@ export function weatherSymbol(weather) {
   return '◌'
 }
 
+export function weatherTypeClass(weather) {
+  const text = String(weather || '')
+  if (text.includes('雪')) return 'weather-icon-snow'
+  if (text.includes('雨')) return 'weather-icon-rain'
+  if (text.includes('阴')) return 'weather-icon-cloud'
+  if (text.includes('云')) return 'weather-icon-partly'
+  if (text.includes('晴')) return 'weather-icon-sun'
+  return 'weather-icon-neutral'
+}
+
 export function aqiStatusClass(status) {
   const text = String(status || '')
   if (text.includes('严重')) return 'aqi-severe'

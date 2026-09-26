@@ -2,6 +2,16 @@
 import ChartState from './ChartState.vue'
 import { useEChart } from '../../utils/chart'
 import { formatNumber } from '../../utils/formatters'
+import {
+  AXIS_NAME,
+  CATEGORY_AXIS,
+  CHART_COLORS,
+  CHART_GRID,
+  DARK_LEGEND,
+  DARK_TOOLTIP,
+  VALUE_AXIS,
+  numericValue,
+} from '../../utils/chartTheme'
 import { ref } from 'vue'
 
 const props = defineProps({
@@ -14,32 +24,62 @@ const chartElement = ref(null)
 
 function buildOption() {
   const rows = props.data || []
+  const rotateLabels = rows.length > 6 ? 26 : 0
   return {
-    animationDuration: 450,
-    grid: { top: 38, right: 12, bottom: 30, left: 34, containLabel: true },
+    animationDuration: 520,
+    animationEasing: 'cubicOut',
+    grid: { ...CHART_GRID, top: 38, bottom: rotateLabels ? 48 : 34, left: 44 },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      backgroundColor: 'rgba(3, 25, 53, 0.94)',
-      borderColor: '#237ead',
-      textStyle: { color: '#eef8ff' },
-      valueFormatter: (value) => `${formatNumber(value)}°C`,
+      ...DARK_TOOLTIP,
+      formatter: (items) => {
+        const city = items?.[0]?.axisValue || '--'
+        const lines = (items || []).map((item) => `${item.marker}${item.seriesName}：${formatNumber(item.value)}°C`)
+        return [`<strong>${city}</strong>`, ...lines].join('<br/>')
+      },
     },
-    legend: { top: 0, right: 0, textStyle: { color: '#8fb7d9', fontSize: 11 } },
+    legend: { ...DARK_LEGEND },
     xAxis: {
       type: 'category',
       data: rows.map((row) => row.city),
-      axisLabel: { color: '#8fb7d9', fontSize: 10, interval: 0, rotate: rows.length > 6 ? 24 : 0 },
-      axisLine: { lineStyle: { color: '#245478' } },
+      ...CATEGORY_AXIS,
+      axisLabel: {
+        ...CATEGORY_AXIS.axisLabel,
+        interval: 0,
+        rotate: rotateLabels,
+        hideOverlap: true,
+        width: 64,
+        overflow: 'truncate',
+        ellipsis: '…',
+      },
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: '#6084a6', fontSize: 10, formatter: '{value}°' },
-      splitLine: { lineStyle: { color: 'rgba(69, 137, 184, 0.16)' } },
+      ...VALUE_AXIS,
+      name: '°C',
+      nameLocation: 'end',
+      nameTextStyle: AXIS_NAME,
+      axisLabel: { ...VALUE_AXIS.axisLabel, formatter: (value) => `${value}°` },
     },
     series: [
-      { name: '最高温', type: 'bar', barMaxWidth: 18, data: rows.map((row) => row.maxTemp ?? null), itemStyle: { color: '#3ee5ff', borderRadius: [3, 3, 0, 0] } },
-      { name: '最低温', type: 'bar', barMaxWidth: 18, data: rows.map((row) => row.minTemp ?? null), itemStyle: { color: '#438cff', borderRadius: [3, 3, 0, 0] } },
+      {
+        name: '最高温',
+        type: 'bar',
+        barMaxWidth: 17,
+        barGap: '18%',
+        data: rows.map((row) => numericValue(row.maxTemp)),
+        itemStyle: { color: CHART_COLORS.warm, borderRadius: [3, 3, 0, 0] },
+        emphasis: { focus: 'series', itemStyle: { color: CHART_COLORS.warmLight } },
+      },
+      {
+        name: '最低温',
+        type: 'bar',
+        barMaxWidth: 17,
+        data: rows.map((row) => numericValue(row.minTemp)),
+        itemStyle: { color: CHART_COLORS.cool, borderRadius: [3, 3, 0, 0] },
+        emphasis: { focus: 'series', itemStyle: { color: CHART_COLORS.coolLight } },
+      },
     ],
   }
 }
@@ -56,6 +96,8 @@ useEChart(chartElement, buildOption, [() => props.data, () => props.loading, () 
 <style scoped>
 .echart {
   width: 100%;
-  height: 226px;
+  height: 100%;
+  min-height: 140px;
+  flex: 1 1 auto;
 }
 </style>
