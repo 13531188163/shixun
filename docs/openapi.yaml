@@ -28,7 +28,7 @@ paths:
       operationId: getHealth
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/HealthSuccess'
         '500':
           $ref: '#/components/responses/ServerError'
   /api/locations/provinces:
@@ -38,7 +38,7 @@ paths:
       operationId: listProvinces
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/StringListSuccess'
         '500':
           $ref: '#/components/responses/ServerError'
   /api/locations/cities:
@@ -50,7 +50,7 @@ paths:
         - $ref: '#/components/parameters/ProvinceRequired'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/StringListSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -67,7 +67,7 @@ paths:
         - $ref: '#/components/parameters/CityRequired'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/StringListSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -88,7 +88,7 @@ paths:
         - $ref: '#/components/parameters/DistrictOptional'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/WeatherLatestSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -108,7 +108,7 @@ paths:
         - $ref: '#/components/parameters/Days'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/WeatherTrendSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -124,11 +124,9 @@ paths:
         - $ref: '#/components/parameters/Cities'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/WeatherComparisonSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
   /api/air-quality/latest:
@@ -141,7 +139,7 @@ paths:
         - $ref: '#/components/parameters/CityRequired'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/AirQualitySuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -158,7 +156,7 @@ paths:
         - $ref: '#/components/parameters/Order'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/AirQualityRankingSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -170,7 +168,7 @@ paths:
       operationId: getAirQualityDistribution
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/AirQualityDistributionSuccess'
         '500':
           $ref: '#/components/responses/ServerError'
   /api/dashboard/overview:
@@ -187,7 +185,7 @@ paths:
         - $ref: '#/components/parameters/DistrictOptional'
       responses:
         '200':
-          $ref: '#/components/responses/SuccessResponse'
+          $ref: '#/components/responses/DashboardSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -512,6 +510,148 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiResponse'
+    HealthSuccess:
+      description: Health check succeeded and database connectivity was verified.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                $ref: '#/components/schemas/HealthStatus'
+    StringListSuccess:
+      description: A normalized location list.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items: {type: string}
+              meta:
+                type: object
+                additionalProperties: true
+    WeatherLatestSuccess:
+      description: Latest historical weather record.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                $ref: '#/components/schemas/WeatherLatest'
+    WeatherTrendSuccess:
+      description: Historical weather trend records.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WeatherTrend'
+              meta:
+                type: object
+                required: [days]
+                properties:
+                  days: {type: integer, minimum: 1, maximum: 90}
+    WeatherComparisonSuccess:
+      description: Latest weather rows for the requested cities.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WeatherComparison'
+              meta:
+                type: object
+                required: [requested, returned]
+                properties:
+                  requested: {type: integer, minimum: 1, maximum: 10}
+                  returned: {type: integer, minimum: 0, maximum: 10}
+    AirQualitySuccess:
+      description: Latest AQI snapshot.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                $ref: '#/components/schemas/AirQuality'
+    AirQualityRankingSuccess:
+      description: AQI ranking rows.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AirQualityRanking'
+              meta:
+                type: object
+                required: [limit, order]
+                properties:
+                  limit: {type: integer, minimum: 1, maximum: 100}
+                  order: {type: string, enum: [asc, desc]}
+    AirQualityDistributionSuccess:
+      description: AQI status distribution rows.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AirQualityDistribution'
+              meta:
+                type: object
+                required: [totalKnown]
+                properties:
+                  totalKnown: {type: integer, minimum: 0}
+    DashboardSuccess:
+      description: First-screen dashboard overview.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                $ref: '#/components/schemas/DashboardOverview'
     BadRequest:
       description: Invalid or missing query parameter.
       content:

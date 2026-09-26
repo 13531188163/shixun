@@ -1,5 +1,12 @@
 # weatherdemo REST API 规范
 
+> **API Status: FROZEN FOR FRONTEND DEVELOPMENT**
+> Frozen on 2026-09-26 after Phase 6 backend acceptance. During Vue 3
+> development, URL、HTTP Method、query parameters、response fields、JSON
+> nesting and data types must remain compatible. Any required change must be
+> recorded here and synchronized with `docs/openapi.yaml`, backend tests and
+> frontend callers.
+
 ## 1. 契约范围
 
 本文件是 Flask 后端和未来 Vue 3 前端共同遵守的接口契约。本阶段只设计接口，不实现路由、Model、Repository 或 Service。
@@ -366,7 +373,8 @@ message 可读但不得泄漏 SQL、密码或连接串。
         "meta": {"requested": 1, "returned": 0}
       }
 
-- HTTP Status：200、400、404、500。部分城市无数据时返回已匹配城市，并在 meta 报告数量。
+- HTTP Status：200、400、500。部分或全部城市无数据时仍返回 200 空数组或已匹配城市，
+  并在 meta 报告 requested / returned 数量；不存在城市不补零。
 - 前端对应模块：主要城市天气对比柱状图。
 - 数据可用状态：available。
 

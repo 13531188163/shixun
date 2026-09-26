@@ -142,3 +142,17 @@ Service/utils 层提供 normalize_city_name()，采用显式映射而不是盲�
 - 未创建 Flask、Vue、Model、Service、依赖或 SQL 改动。
 
 下一阶段建议：用户确认本阶段契约后，进入 Phase 2，仅搭建 Flask 应用配置、统一 response/error 结构、数据库连接健康检查和测试骨架；暂不实现业务查询。
+
+## 10. Phase 6 完成后的接口冻结规则
+
+Phase 6 后端验收已完成，REST API 契约已冻结，状态记录在
+`docs/API_SPEC.md` 和 `docs/BACKEND_ACCEPTANCE.md` 中。进入 Vue 3 前端开发
+后，原则上不得破坏性修改以下内容：
+
+- URL 和 HTTP Method；
+- Query 参数名称、是否必填、默认值和取值范围；
+- Response 字段、JSON 层级和字段命名；
+- 字段数据类型、空值语义和 HTTP 状态码。
+
+如果确实需要修改 API，必须同步更新 `API_SPEC.md`、`openapi.yaml`、后端
+测试和前端调用，并在文档中记录变更原因和兼容影响。
