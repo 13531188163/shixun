@@ -1,0 +1,16 @@
+:root {
+  --bg-primary: #031327;
+  --bg-secondary: #061d39;
+  --panel-bg: rgb(5 28 56 / 82%);
+  --panel-bg-strong: rgb(7 36 70 / 94%);
+  --border-color: #168fd2;
+  --border-soft: rgb(38 160 223 / 48%);
+  --glow-color: #20c9ff;
+  --text-primary: #eef8ff;
+  --text-secondary: #8fb7d9;
+  --text-muted: #6084a6;
+  --accent-cyan: #3ee5ff;
+  --accent-blue: #438cff;
+  --accent-green: #36e0a0;
+  --danger: #ff7d86;
+}

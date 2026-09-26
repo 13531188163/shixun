@@ -1,24 +1,21 @@
 # 天气数据可视化与预测系统
 
-一个基于 Python Flask、Vue 3、ECharts 和 MySQL 的前后端分离天气数据分析项目。系统提供天气数据存储、查询、统计分析和可视化展示，可按省份、城市、区县及年份查看温度、风力、降水、天气类型和空气质量数据。
+一个基于 Python Flask、Vue 3、ECharts 和 MySQL 的前后端分离天气数据分析项目。当前首页是正式的天气与空气质量可视化大屏，数据全部来自已冻结的 REST API，可按省份、城市、区县切换查看真实记录。
 
 ## 项目简介
 
-本项目面向天气数据查询与分析场景，使用已有 SQL 数据文件初始化 MySQL 数据库，由 Flask 后端提供 REST API，并在 Vue 前端使用 ECharts 图表和中国地图进行可视化展示。
+本项目面向天气数据查询与分析场景，使用已有 SQL 数据文件初始化 MySQL 数据库，由 Flask 后端提供 REST API，并在 Vue 前端使用 ECharts 图表和响应式深色大屏布局进行可视化展示。
 
-系统首页采用天气监控大屏形式，另外提供温度、风力、降水、天气类型和空气质量等专题分析页面。
+系统首页采用天气监控大屏形式；温度、风力、降水等专题页面可在后续阶段扩展。
 
 ## 核心功能
 
-* 全国天气数据监控大屏
-* 省、市、区县和年份多级筛选
-* 最高温、最低温及月度温度趋势分析
-* 平均风速、最大风速和风力等级分析
-* 累计降水、降水天数和降水趋势分析
-* 晴、阴、雨、雪等天气类型分布统计
-* 全国省份平均气温地图
-* 空气质量 AQI、城市排名和省份分布
-* 基于近期历史数据的简单天气预测
+* 天气与空气质量数据监控大屏
+* 省、市、区县三级真实数据联动
+* 最高温、最低温历史趋势和城市温度比较
+* 平均风速、最大风速和降水量指标卡
+* 空气质量 AQI 概况、低值城市 TOP10 和等级分布
+* Dashboard 概览统计与加载、空态、错误态
 
 ## 技术栈
 
@@ -26,8 +23,8 @@
 
 * Vue 3
 * Vue Router
-* ECharts 6
-* Vite 8
+* Apache ECharts
+* Vite 6
 * JavaScript、HTML、CSS
 
 ### 后端
@@ -42,12 +39,7 @@
 
 |页面路径|页面名称|功能|
 |-|-|-|
-|`/`|天气监控大屏|综合指标、气温地图、温度、风力、降水和天气分布|
-|`/temperature`|温度分析|温度统计、趋势及预测|
-|`/wind`|风力分析|风速趋势、等级和风能指标|
-|`/precipitation`|降水分析|降水统计、趋势和等级|
-|`/weather`|天气分析|天气类型数量及占比|
-|`/air-quality`|空气质量|AQI、城市排名和省份分布|
+|`/`|天气与空气质量可视化大屏|天气概况、历史趋势、城市温度比较、AQI 概况、排名和等级分布|
 
 ## 项目结构
 
@@ -113,7 +105,7 @@ Windows：
 
 ```powershell
 .venv\\Scripts\\activate
-pip install -r backend/requirements.txt
+pip install -r ..\requirements.txt
 python app.py
 ```
 
@@ -121,7 +113,7 @@ macOS／Linux：
 
 ```bash
 source .venv/bin/activate
-pip install -r backend/requirements.txt
+pip install -r ../requirements.txt
 python app.py
 ```
 
@@ -137,7 +129,7 @@ npm install
 npm run dev
 ```
 
-前端默认运行在：`http://127.0.0.1:3000`
+前端默认运行在：`http://localhost:5173`
 
 ## 主要 API
 
@@ -172,4 +164,3 @@ test: 添加天气统计接口测试
 ## Git 仓库
 
 * 仓库地址：https://github.com/13531188163/shixun
-
