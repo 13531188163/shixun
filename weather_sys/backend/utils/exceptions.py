@@ -24,4 +24,4 @@ class DatabaseUnavailableError(AppException):
     """Raised when MySQL cannot be connected to or does not answer."""
 
     def __init__(self, message: str = "database unavailable") -> None:
-        super().__init__(message=message, status_code=503)
+        super().__init__(message=message, status_code=500)

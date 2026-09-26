@@ -10,7 +10,11 @@ from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
 from .config import Settings, settings
+from .routes.air_quality_routes import air_quality_bp
+from .routes.dashboard_routes import dashboard_bp
 from .routes.health_routes import health_bp
+from .routes.location_routes import location_bp
+from .routes.weather_routes import weather_bp
 from .utils.exceptions import AppException
 from .utils.response import error_response
 
@@ -39,6 +43,10 @@ def create_app(app_settings: Optional[Settings] = None) -> Flask:
     )
 
     app.register_blueprint(health_bp, url_prefix="/api")
+    app.register_blueprint(location_bp, url_prefix="/api/locations")
+    app.register_blueprint(weather_bp, url_prefix="/api/weather")
+    app.register_blueprint(air_quality_bp, url_prefix="/api/air-quality")
+    app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
     _register_error_handlers(app)
     return app
 
@@ -63,7 +71,10 @@ def _register_error_handlers(app: Flask) -> None:
             500: "internal server error",
         }
         message = messages.get(status_code, "request failed")
-        return error_response(message=message, http_status=status_code)
+        response, status = error_response(message=message, http_status=status_code)
+        if status_code == 405 and error.valid_methods:
+            response.headers["Allow"] = ", ".join(sorted(error.valid_methods))
+        return response, status
 
     @app.errorhandler(Exception)
     def handle_unexpected_exception(error: Exception):

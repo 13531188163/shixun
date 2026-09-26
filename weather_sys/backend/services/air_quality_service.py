@@ -130,6 +130,16 @@ def get_air_quality_distribution(
     return result
 
 
+def get_air_quality_distribution_result() -> dict[str, Any]:
+    """Return distribution data and its contract metadata."""
+
+    data = get_air_quality_distribution()
+    return {
+        "data": data,
+        "meta": {"totalKnown": sum(int(row.get("count") or 0) for row in data)},
+    }
+
+
 def get_all_air_quality(
     limit: int = 1000,
     city: str | None = None,
