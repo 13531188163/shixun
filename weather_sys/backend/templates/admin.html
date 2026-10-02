@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WeatherDemo 后端管理台</title>
+  <style>
+    :root { color-scheme: dark; --bg:#08162d; --card:#10284a; --line:#235485; --cyan:#66ddff; --text:#e9f5ff; --muted:#91aec8; --ok:#42d99b; --warn:#ffb05f; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:radial-gradient(circle at 80% -20%,#164675 0,#08162d 48%,#050d1d 100%); color:var(--text); font:14px/1.55 system-ui,"Microsoft YaHei",sans-serif; }
+    a { color:var(--cyan); text-decoration:none; } a:hover { text-decoration:underline; }
+    .shell { width:min(1280px,calc(100% - 36px)); margin:0 auto; padding:34px 0 52px; }
+    .eyebrow { color:var(--cyan); font-size:12px; letter-spacing:.16em; text-transform:uppercase; }
+    h1 { margin:5px 0 4px; font-size:clamp(26px,4vw,42px); letter-spacing:.03em; }
+    .lead { margin:0; color:var(--muted); }
+    .topbar { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; margin-bottom:26px; }
+    .links { display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; }
+    .links a { padding:8px 12px; border:1px solid var(--line); border-radius:7px; background:#0e2442; }
+    .cards { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:26px; }
+    .card { padding:16px; background:linear-gradient(145deg,#12325a,#0b1e3a); border:1px solid var(--line); border-radius:10px; box-shadow:0 10px 30px #0002; }
+    .card-label { color:var(--muted); font-size:12px; } .card-value { margin-top:5px; color:var(--cyan); font-size:20px; font-weight:700; }
+    .status-ok { color:var(--ok); } .status-warn { color:var(--warn); }
+    .notice { margin-bottom:18px; padding:12px 14px; color:#ffdba9; background:#5b371d66; border:1px solid #a96832; border-radius:8px; }
+    .section-title { margin:28px 0 12px; font-size:20px; }
+    .registry { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+    .registry-card, .route-list { padding:16px; background:#0b203d; border:1px solid var(--line); border-radius:10px; }
+    .registry-card h3 { margin:0 0 4px; font-size:17px; } .table-name { color:var(--cyan); font:12px ui-monospace,SFMono-Regular,Consolas,monospace; }
+    .registry-card p { min-height:48px; margin:12px 0; color:var(--muted); } .api { color:#bdeaff; font:12px ui-monospace,SFMono-Regular,Consolas,monospace; word-break:break-word; }
+    .route-row { display:flex; gap:18px; padding:9px 0; border-bottom:1px solid #173b61; } .route-row:last-child { border-bottom:0; }
+    .route-path { min-width:230px; color:var(--cyan); font:12px ui-monospace,SFMono-Regular,Consolas,monospace; } .route-description { color:var(--muted); }
+    footer { margin-top:28px; color:var(--muted); font-size:12px; }
+    @media (max-width:760px) { .shell { width:min(100% - 22px,1280px); padding-top:22px; } .topbar { align-items:flex-start; flex-direction:column; } .links { justify-content:flex-start; } .cards,.registry { grid-template-columns:1fr 1fr; } .route-row { flex-direction:column; gap:3px; } .route-path { min-width:0; } }
+    @media (max-width:460px) { .cards,.registry { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">WeatherDemo / Flask Backend</div>
+        <h1>后端管理台</h1>
+        <p class="lead">这是 Flask 后端的运行与接口管理页面，不是 Vue 天气可视化大屏。</p>
+      </div>
+      <nav class="links" aria-label="页面链接">
+        <a href="{{ frontend_dev_url }}" target="_blank" rel="noreferrer">打开 Vue 前端大屏</a>
+        <a href="{{ frontend_build_url }}" target="_blank" rel="noreferrer">打开构建版大屏</a>
+        <a href="/api/health" target="_blank" rel="noreferrer">API 健康检查</a>
+      </nav>
+    </header>
+
+    <section class="cards" aria-label="后端状态">
+      <div class="card"><div class="card-label">应用服务</div><div class="card-value status-ok">Flask 运行中</div></div>
+      <div class="card"><div class="card-label">数据库</div><div class="card-value {{ 'status-ok' if database_ok else 'status-warn' }}">{{ '已连接' if database_ok else '连接异常' }}</div></div>
+      <div class="card"><div class="card-label">当前数据库</div><div class="card-value">{{ database_name }}</div></div>
+      <div class="card"><div class="card-label">管理入口</div><div class="card-value">/admin</div></div>
+    </section>
+
+    {% if not database_ok %}<div class="notice" role="alert">数据库健康检查失败。请检查 MySQL 服务与项目 .env 配置；管理页仍可打开，但业务 API 可能不可用。</div>{% endif %}
+
+    <h2 class="section-title">业务表注册</h2>
+    <div class="registry">
+      {% for table in summary.tables %}
+        <article class="registry-card">
+          <h3>{{ table.label }}</h3>
+          <div class="table-name">{{ table.name }}</div>
+          <p>{{ table.description }}</p>
+          <div class="api">{{ table.api }}</div>
+        </article>
+      {% endfor %}
+    </div>
+
+    <h2 class="section-title">后端 API 入口</h2>
+    <section class="route-list">
+      {% for route in summary.routes %}<div class="route-row"><div class="route-path">{{ route.path }}</div><div class="route-description">{{ route.description }}</div></div>{% endfor %}
+    </section>
+
+    <footer>管理页仅显示运行状态和接口注册信息，不直接输出数据库行数据；数据查询请使用受控 API。天气可视化请打开上方 Vue 前端入口。</footer>
+  </main>
+</body>
+</html>

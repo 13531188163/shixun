@@ -12,6 +12,7 @@ from werkzeug.exceptions import HTTPException
 
 from .config import Settings, settings
 from .routes.air_quality_routes import air_quality_bp
+from .routes.admin_routes import admin_bp
 from .routes.dashboard_routes import dashboard_bp
 from .routes.health_routes import health_bp
 from .routes.location_routes import location_bp
@@ -45,21 +46,22 @@ def create_app(app_settings: Optional[Settings] = None) -> Flask:
     )
 
     app.register_blueprint(health_bp, url_prefix="/api")
+    app.register_blueprint(admin_bp)
     app.register_blueprint(location_bp, url_prefix="/api/locations")
     app.register_blueprint(weather_bp, url_prefix="/api/weather")
     app.register_blueprint(air_quality_bp, url_prefix="/api/air-quality")
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
-    _register_frontend_preview(app)
+    _register_frontend_dashboard(app)
     _register_error_handlers(app)
     return app
 
 
-def _register_frontend_preview(app: Flask) -> None:
-    """Expose the built Dashboard from Flask for easy local preview.
+def _register_frontend_dashboard(app: Flask) -> None:
+    """Expose an optional built Vue Dashboard under a distinct path.
 
-    The Vite dev server remains the preferred development workflow. When a
-    production bundle exists, opening the backend root is enough to preview
-    the same page without remembering a second URL.
+    The Flask root is reserved for the backend management page.  The Vite
+    development server remains the preferred frontend workflow, while a
+    production bundle can be opened at ``/dashboard`` after ``npm run build``.
     """
 
     setup_page = """<!doctype html>
@@ -69,7 +71,7 @@ def _register_frontend_preview(app: Flask) -> None:
 <p>先在另一个终端执行：<code>cd weather_sys/font/weather_font</code>、<code>npm install</code>、<code>npm run build</code>，然后刷新本页；开发预览也可以打开 <a href="http://localhost:5173">http://localhost:5173</a>。</p>
 <p>健康检查：<a href="/api/health">/api/health</a></p></body></html>"""
 
-    @app.get("/")
+    @app.get("/dashboard")
     def frontend_preview():
         index_file = FRONTEND_DIST / "index.html"
         if index_file.is_file():

@@ -114,6 +114,8 @@ python weather_sys/app.py
 
 后端默认运行在：`http://127.0.0.1:5000`
 
+后端启动后打开 `http://127.0.0.1:5000/` 或 `/admin`，这里是 Flask 后端管理台，显示服务状态、数据库连接状态和 API 注册信息，不是天气可视化页面。
+
 ### 4\. 启动前端
 
 打开另一个终端：
@@ -126,7 +128,7 @@ npm run dev
 
 前端默认运行在：`http://localhost:5173`
 
-完成一次 `npm run build` 后，也可以只启动 Flask，直接打开 `http://127.0.0.1:5000/` 预览 Dashboard。页面中的全国地图是主要交互入口：点击省份后，页面会加载该省真实城市、区县和可用观测日期；地图下方的城市、区县、数据日期选择器可继续细化查询并刷新内容。页面使用数据库固定日期记录，不显示实时钟表。
+前端 `http://localhost:5173/` 才是天气与空气质量可视化大屏。完成一次 `npm run build` 后，也可以打开后端的 `http://127.0.0.1:5000/dashboard` 预览构建版大屏；后端根路径仍保持为管理台。页面中的全国地图是主要交互入口：点击省份后，页面会加载该省真实城市、区县和可用观测日期；地图下方的城市、区县、数据日期选择器可继续细化查询并刷新内容。页面使用数据库固定日期记录，不显示实时钟表。
 
 ## 主要 API
 
@@ -134,7 +136,7 @@ npm run dev
 |-|-|
 |`/api/health`|应用和数据库健康检查|
 |`/api/locations/*`|省份、城市、区县列表|
-|`/api/weather/latest`、`trend`、`city-comparison`|天气最新记录、历史趋势、城市比较|
+|`/api/weather/latest`、`dates`、`trend`、`city-comparison`|固定日期天气记录、可用日期、历史趋势、城市比较|
 |`/api/air-quality/latest`、`ranking`、`distribution`|AQI 最新记录、排名、等级分布|
 |`/api/dashboard/overview`|Dashboard 首屏聚合数据|
 

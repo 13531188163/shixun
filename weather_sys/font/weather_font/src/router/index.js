@@ -10,6 +10,11 @@ const router = createRouter({
       name: 'dashboard',
       component: DashboardView,
     },
+    {
+      path: '/dashboard',
+      name: 'dashboard-build',
+      component: DashboardView,
+    },
   ],
 })
 
