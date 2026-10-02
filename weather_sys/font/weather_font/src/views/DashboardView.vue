@@ -4,7 +4,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { getHealth } from '../api/health'
 import { getProvinces, getCities, getDistricts } from '../api/location'
 import { getDashboardOverview } from '../api/dashboard'
-import { getWeatherTrend, getCityWeatherComparison } from '../api/weather'
+import { getWeatherDates, getWeatherTrend, getCityWeatherComparison } from '../api/weather'
 import { getAirQualityRanking, getAirQualityDistribution } from '../api/airQuality'
 import DashboardHeader from '../components/dashboard/DashboardHeader.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
@@ -20,7 +20,9 @@ import AirQualityDistributionChart from '../components/dashboard/AirQualityDistr
 const provinces = ref([])
 const cities = ref([])
 const districts = ref([])
+const availableDates = ref([])
 const selection = reactive({ province: '', city: '', district: '' })
+const selectedDate = ref('')
 const health = ref(null)
 const healthError = ref('')
 
@@ -53,7 +55,7 @@ const loading = computed(() => locationLoading.value || payloadLoading.value)
 const basicStatistics = computed(() => dashboard.value?.basicStatistics || null)
 const cityComparisonDisplay = computed(() => cityComparison.value.slice(0, 6))
 const locationReady = computed(() => Boolean(selection.province && selection.city))
-const dataDate = computed(() => latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
+const dataDate = computed(() => selectedDate.value || latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
 const apiStatus = computed(() => {
   if (pageError.value) return '需要检查 API'
   if (healthError.value) return '健康检查失败'
@@ -134,6 +136,7 @@ async function loadSelectedData(version) {
 
   payloadLoading.value = true
   const params = buildLocationParams()
+  const overviewParams = selectedDate.value ? { ...params, date: selectedDate.value } : params
   let comparisonCities
   try {
     comparisonCities = await comparisonCitiesFor(selection.city)
@@ -144,7 +147,7 @@ async function loadSelectedData(version) {
 
   const [requests] = await Promise.all([
     Promise.allSettled([
-      getDashboardOverview(params),
+      getDashboardOverview(overviewParams),
       getWeatherTrend({ ...params, days: 7 }),
       getCityWeatherComparison({ cities: comparisonCities.join(',') }),
     ]),
@@ -170,6 +173,23 @@ async function loadSelectedData(version) {
   payloadLoading.value = false
 }
 
+async function loadAvailableDates(version) {
+  if (!selection.province || !selection.city || version !== requestVersion) return
+  try {
+    const response = await getWeatherDates(buildLocationParams())
+    if (version !== requestVersion) return
+    availableDates.value = Array.isArray(response.data) ? response.data : []
+    if (!availableDates.value.includes(selectedDate.value)) {
+      selectedDate.value = availableDates.value[0] || ''
+    }
+  } catch (error) {
+    if (version !== requestVersion) return
+    availableDates.value = []
+    selectedDate.value = ''
+    if (!isNotFound(error)) pageError.value = errorText(error, '可用日期读取失败')
+  }
+}
+
 async function loadDistrictsAndData(version) {
   if (!selection.province || !selection.city || version !== requestVersion) return
   try {
@@ -184,6 +204,7 @@ async function loadDistrictsAndData(version) {
     // A missing district list is a valid empty state; a server error remains visible.
     if (!isNotFound(error)) pageError.value = errorText(error, '区县列表读取失败')
   }
+  await loadAvailableDates(version)
   await loadSelectedData(version)
 }
 
@@ -192,8 +213,10 @@ async function handleProvinceChange(province) {
   selection.province = province
   selection.city = ''
   selection.district = ''
+  selectedDate.value = ''
   cities.value = []
   districts.value = []
+  availableDates.value = []
   clearData()
   pageError.value = ''
   if (!province) {
@@ -255,7 +278,9 @@ async function handleCityChange(city) {
   const version = ++requestVersion
   selection.city = city
   selection.district = ''
+  selectedDate.value = ''
   districts.value = []
+  availableDates.value = []
   clearData()
   pageError.value = ''
   if (!city) {
@@ -280,10 +305,13 @@ async function handleCityChange(city) {
 async function handleDistrictChange(district) {
   const version = ++requestVersion
   selection.district = district
+  selectedDate.value = ''
+  availableDates.value = []
   clearData()
   pageError.value = ''
   locationLoading.value = true
   try {
+    await loadAvailableDates(version)
     await loadSelectedData(version)
   } finally {
     if (version === requestVersion) {
@@ -291,6 +319,14 @@ async function handleDistrictChange(district) {
       payloadLoading.value = false
     }
   }
+}
+
+async function handleDateChange(date) {
+  const version = ++requestVersion
+  selectedDate.value = date
+  clearData()
+  pageError.value = ''
+  await loadSelectedData(version)
 }
 
 async function loadInitial() {
@@ -328,8 +364,32 @@ onMounted(loadInitial)
         </div>
         <div class="toolbar-summary">
           <span :class="['api-status', { offline: pageError || healthError }]" aria-live="polite"><i />{{ apiStatus }}</span>
-          <span v-if="locationReady">{{ selection.province }} / {{ selection.city }}</span>
+          <span v-if="locationReady">{{ selection.province }} / {{ selection.city }}<template v-if="selection.district"> / {{ selection.district }}</template></span>
         </div>
+      </div>
+
+      <div v-if="locationReady" class="selection-controls" aria-label="地图选中地区的详细条件">
+        <span class="selection-controls-title">地图选中后细化</span>
+        <label>
+          <span>城市</span>
+          <select :value="selection.city" :disabled="loading" @change="handleCityChange($event.target.value)">
+            <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
+          </select>
+        </label>
+        <label>
+          <span>区县</span>
+          <select :value="selection.district" :disabled="loading || !districts.length" @change="handleDistrictChange($event.target.value)">
+            <option value="">全市代表记录</option>
+            <option v-for="district in districts" :key="district" :value="district">{{ district }}</option>
+          </select>
+        </label>
+        <label>
+          <span>数据日期</span>
+          <select :value="selectedDate" :disabled="loading || !availableDates.length" @change="handleDateChange($event.target.value)">
+            <option v-for="date in availableDates" :key="date" :value="date">{{ date }}</option>
+          </select>
+        </label>
+        <span class="selection-caption">共 {{ availableDates.length }} 个可用观测日期</span>
       </div>
 
       <p v-if="pageError" class="dashboard-alert" role="alert">{{ pageError }}</p>
@@ -419,6 +479,60 @@ onMounted(loadInitial)
   letter-spacing: 0.08em;
 }
 
+.selection-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px 12px;
+  margin: 0 0 16px;
+  padding: 10px 13px;
+  background: rgb(11 37 76 / 58%);
+  border: 1px solid var(--color-panel-line);
+  border-radius: 8px;
+}
+
+.selection-controls-title {
+  color: var(--accent-cyan);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.selection-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.selection-controls select {
+  min-width: 112px;
+  max-width: 190px;
+  padding: 6px 25px 6px 9px;
+  color: var(--text-primary);
+  font: inherit;
+  background: #0a2852;
+  border: 1px solid rgb(45 151 216 / 55%);
+  border-radius: 5px;
+  outline: none;
+}
+
+.selection-controls select:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgb(52 210 255 / 16%);
+}
+
+.selection-controls select:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.selection-caption {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 .fixed-date {
   padding-left: 10px;
   color: var(--text-secondary);
@@ -462,6 +576,21 @@ onMounted(loadInitial)
     width: 100%;
     justify-content: flex-start;
     text-align: left;
+  }
+
+  .selection-controls {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .selection-controls label {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .selection-controls select {
+    flex: 1;
+    max-width: none;
   }
 }
 </style>

@@ -35,6 +35,7 @@ _WEATHER_SELECT = ", ".join(WEATHER_COLUMNS)
 _DEFAULT_HISTORY_LIMIT = 7
 _MAX_HISTORY_LIMIT = 90
 _MAX_LOCATION_LIMIT = 500
+_MAX_DATE_LIMIT = 1000
 
 
 def _query_values(values: Iterable[str] | str | None, *, kind: str) -> tuple[str, ...]:
@@ -111,11 +112,15 @@ def get_latest_weather(
     city: str,
     province: str | None = None,
     district: str | None = None,
+    date: str | None = None,
 ) -> dict[str, Any] | None:
-    """Return the newest observed row for one city/location, if present."""
+    """Return one row for a location, optionally pinned to an observed date."""
 
     _require_city(city)
     clauses, params = _location_filters(province=province, city=city, district=district)
+    if date is not None:
+        clauses.append("date = %s")
+        params.append(date)
     where_sql = " AND ".join(clauses)
     sql = (
         f"SELECT {_WEATHER_SELECT} FROM weather_data "
@@ -129,6 +134,35 @@ def get_latest_weather(
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
             return cursor.fetchone()
+
+
+def get_weather_dates(
+    city: str,
+    province: str | None = None,
+    district: str | None = None,
+    limit: int = _MAX_DATE_LIMIT,
+) -> list[dict[str, Any]]:
+    """Return the bounded set of valid historical dates for a location."""
+
+    _require_city(city)
+    _validate_date_limit(limit)
+    clauses, params = _location_filters(province=province, city=city, district=district)
+    clauses.extend([
+        "date IS NOT NULL",
+        "TRIM(date) <> ''",
+        "date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'",
+    ])
+    sql = (
+        "SELECT DISTINCT date FROM weather_data "
+        f"WHERE {' AND '.join(clauses)} "
+        "ORDER BY STR_TO_DATE(date, '%%Y-%%m-%%d') DESC "
+        "LIMIT %s"
+    )
+    params.append(limit)
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return list(cursor.fetchall())
 
 
 def get_weather_history(
@@ -317,3 +351,10 @@ def _validate_history_limit(limit: int) -> None:
         raise ValueError("limit must be an integer")
     if not 1 <= limit <= _MAX_HISTORY_LIMIT:
         raise ValueError(f"limit must be between 1 and {_MAX_HISTORY_LIMIT}")
+
+
+def _validate_date_limit(limit: int) -> None:
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        raise ValueError("limit must be an integer")
+    if not 1 <= limit <= _MAX_DATE_LIMIT:
+        raise ValueError(f"limit must be between 1 and {_MAX_DATE_LIMIT}")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 from flask import request
 
@@ -38,6 +39,21 @@ def integer_param(name: str, default: int, minimum: int, maximum: int) -> int:
     if not minimum <= number <= maximum:
         raise AppException(message)
     return number
+
+
+def date_param(name: str = "date") -> str | None:
+    """Parse an optional fixed observation date in the public API format."""
+
+    value = _single_value(name)
+    if value is None:
+        return None
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise AppException(f"{name} must be a valid date in YYYY-MM-DD format")
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as exc:
+        raise AppException(f"{name} must be a valid date in YYYY-MM-DD format") from exc
+    return value
 
 
 def enum_param(name: str, default: str, choices: tuple[str, ...]) -> str:

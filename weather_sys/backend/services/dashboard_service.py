@@ -45,10 +45,18 @@ def get_dashboard_overview(
     city: str,
     province: str | None = None,
     district: str | None = None,
+    date: str | None = None,
 ) -> dict[str, Any] | None:
     """Return location, latest source-backed values, and basic statistics."""
 
-    latest_weather = get_latest_weather(city=city, province=province, district=district)
+    weather_params: dict[str, Any] = {
+        "city": city,
+        "province": province,
+        "district": district,
+    }
+    if date is not None:
+        weather_params["date"] = date
+    latest_weather = get_latest_weather(**weather_params)
     if latest_weather is None:
         return None
 

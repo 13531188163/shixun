@@ -3,7 +3,7 @@
 from flask import Blueprint
 
 from ..services import weather_service
-from ..utils.query_params import cities_param, integer_param, weather_location_params
+from ..utils.query_params import date_param, cities_param, integer_param, weather_location_params
 from ..utils.response import error_response, success_response
 
 
@@ -12,10 +12,22 @@ weather_bp = Blueprint("weather", __name__)
 
 @weather_bp.get("/latest")
 def latest_weather():
-    data = weather_service.get_latest_weather(**weather_location_params())
+    location = weather_location_params()
+    selected_date = date_param()
+    if selected_date is not None:
+        location["date"] = selected_date
+    data = weather_service.get_latest_weather(**location)
     if data is None:
         return error_response("weather record not found", http_status=404)
     return success_response(data=data)
+
+
+@weather_bp.get("/dates")
+def weather_dates():
+    """List fixed observation dates available for a selected location."""
+
+    data = weather_service.list_weather_dates(**weather_location_params())
+    return success_response(data=data, meta={"count": len(data)})
 
 
 @weather_bp.get("/trend")

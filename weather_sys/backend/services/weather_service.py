@@ -8,6 +8,7 @@ functions remain responsible for SQL and return raw database column names.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+import re
 from datetime import date, datetime
 from typing import Any
 
@@ -25,6 +26,7 @@ _MAX_NAME_LENGTH = 50
 _DEFAULT_TREND_DAYS = 7
 _MAX_TREND_DAYS = 90
 _MAX_COMPARISON_CITIES = 10
+_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _location_name(value: Any, *, field: str, required: bool = False) -> str | None:
@@ -48,6 +50,16 @@ def _validate_days(days: Any) -> int:
     if not 1 <= days <= _MAX_TREND_DAYS:
         raise ValueError("days must be an integer between 1 and 90")
     return days
+
+
+def _validate_observation_date(value: Any) -> str:
+    if not isinstance(value, str) or not _DATE_PATTERN.fullmatch(value):
+        raise ValueError("date must be a valid date in YYYY-MM-DD format")
+    try:
+        datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("date must be a valid date in YYYY-MM-DD format") from exc
+    return value
 
 
 def _format_datetime(value: Any) -> str | None:
@@ -117,18 +129,41 @@ def get_latest_weather(
     *, city: str,
     province: str | None = None,
     district: str | None = None,
+    date: str | None = None,
 ) -> dict[str, Any] | None:
     """Return one latest weather record, converted to the API shape."""
 
     city_value = _location_name(city, field="city", required=True)
     province_value = _location_name(province, field="province")
     district_value = _location_name(district, field="district")
-    row = weather_model.get_latest_weather(
+    model_params: dict[str, Any] = {
+        "city": city_value,
+        "province": province_value,
+        "district": district_value,
+    }
+    if date is not None:
+        model_params["date"] = _validate_observation_date(date)
+    row = weather_model.get_latest_weather(**model_params)
+    return _weather_payload(row) if row is not None else None
+
+
+def list_weather_dates(
+    *,
+    city: str,
+    province: str | None = None,
+    district: str | None = None,
+) -> list[str]:
+    """Return real observation dates available for the selected location."""
+
+    city_value = _location_name(city, field="city", required=True)
+    province_value = _location_name(province, field="province")
+    district_value = _location_name(district, field="district")
+    rows = weather_model.get_weather_dates(
         city=city_value,
         province=province_value,
         district=district_value,
     )
-    return _weather_payload(row) if row is not None else None
+    return [formatted for row in rows if (formatted := format_date(row.get("date"))) is not None]
 
 
 def get_weather_trend(

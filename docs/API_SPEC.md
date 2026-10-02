@@ -235,13 +235,13 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - Method：GET
 - URL：/api/weather/latest
 - 业务用途：获取指定城市（可选区县）按 date 可获得的最新天气记录。
-- Query 参数：province、city、district。
-- 参数类型：string、string、string。
-- 是否必填：province 否；city 是；district 否。
+- Query 参数：province、city、district、date。
+- 参数类型：string、string、string、date。
+- 是否必填：province 否；city 是；district 否；date 否。
 - 默认值：province 由 city 反查；district 不提供时使用稳定代表记录。
-- 参数约束：名称长度 1-50；city 必须存在；district 若提供必须属于该城市。
+- 参数约束：名称长度 1-50；city 必须存在；district 若提供必须属于该城市；date 为 YYYY-MM-DD 且必须是该位置实际存在的观测日期。
 - 数据来源表：weather_data。
-- 数据计算方式：按位置过滤，解析 date 后倒序取最新日期；district 缺省时按 district、id 稳定选择一条原始记录；转换天气数值和城市名称。
+- 数据计算方式：按位置过滤；未提供 date 时解析 date 后倒序取最新日期，提供 date 时只返回该固定观测日；district 缺省时按 district、id 稳定选择一条原始记录；转换天气数值和城市名称。
 - 成功示例：
 
       {
@@ -281,7 +281,31 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：当前天气概况、顶部温度/风速/降水卡片。
 - 数据可用状态：available。
 
-### 5.2 获取天气趋势
+### 5.2 获取位置可用观测日期
+
+- 接口名称：获取天气历史日期
+- Method：GET
+- URL：/api/weather/dates
+- 业务用途：为地图选中省份后的城市、区县和固定日期选择器提供真实可用日期。
+- Query 参数：province、city、district。
+- 参数类型：string、string、string。
+- 是否必填：province 否；city 是；district 否。
+- 数据来源表：weather_data。
+- 数据计算方式：按位置过滤，校验日期字符串格式后去重，按观测日期倒序返回，最多返回 1000 个日期；不代表实时数据。
+- 成功示例：
+
+      {
+        "code": 200,
+        "message": "success",
+        "data": ["2026-05-22", "2026-05-21", "2026-05-20"],
+        "meta": {"count": 3}
+      }
+
+- HTTP Status：200、400、500。
+- 前端对应模块：地图选中后的城市、区县和数据日期选择器。
+- 数据可用状态：available。
+
+### 5.3 获取天气趋势
 
 - 接口名称：获取天气趋势
 - Method：GET
@@ -328,7 +352,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：天气趋势图、历史风速/降水图。
 - 数据可用状态：available（历史趋势，不是预报）。
 
-### 5.3 城市天气比较
+### 5.4 城市天气比较
 
 - 接口名称：城市天气比较
 - Method：GET
@@ -522,13 +546,13 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - Method：GET
 - URL：/api/dashboard/overview
 - 业务用途：一次返回首屏需要的当前位置、最新天气、最新空气质量和基础统计；不包含完整历史趋势。
-- Query 参数：province、city、district。
-- 参数类型：string、string、string。
-- 是否必填：province 否；city 是；district 否。
+- Query 参数：province、city、district、date。
+- 参数类型：string、string、string、date。
+- 是否必填：province 否；city 是；district 否；date 否。
 - 默认值：province 由 city 反查；district 遵循 weather/latest 的稳定代表记录规则。
-- 参数约束：名称长度 1-50；city 必须存在；basicStatistics 只能包含已有表可计算的统计。
+- 参数约束：名称长度 1-50；city 必须存在；district 若提供必须属于该城市；date 为 YYYY-MM-DD 且必须是该位置实际存在的观测日期；basicStatistics 只能包含已有表可计算的统计。
 - 数据来源表：weather_data、air_quality_data。
-- 数据计算方式：复用 weather/latest 规则；通过规范化 city 关联 air_quality_data；basicStatistics 返回记录数、天气最新日期和空气快照时间，不展开历史趋势。
+- 数据计算方式：复用 weather/latest 规则（可通过 date 固定天气观测日）；通过规范化 city 关联 air_quality_data；basicStatistics 返回记录数、天气最新日期和空气快照时间，不展开历史趋势。
 - 成功示例：
 
       {

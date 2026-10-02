@@ -79,13 +79,15 @@ paths:
       tags: [Weather]
       summary: Get the latest available weather record
       description: >
-        Selects by parsed weather_data.date. If district is omitted, a stable
-        representative source row is selected and the returned district is explicit.
+        Selects by parsed weather_data.date. If date is provided, the returned
+        row is pinned to that fixed observation date. If district is omitted,
+        a stable representative source row is selected and the returned district is explicit.
       operationId: getLatestWeather
       parameters:
         - $ref: '#/components/parameters/ProvinceOptional'
         - $ref: '#/components/parameters/CityRequired'
         - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/DateOptional'
       responses:
         '200':
           $ref: '#/components/responses/WeatherLatestSuccess'
@@ -93,6 +95,23 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/weather/dates:
+    get:
+      tags: [Weather]
+      summary: List available historical weather dates
+      description: Returns real fixed observation dates for the selected location; this is not a realtime feed.
+      operationId: listWeatherDates
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityRequired'
+        - $ref: '#/components/parameters/DistrictOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/WeatherDatesSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
   /api/weather/trend:
@@ -176,13 +195,15 @@ paths:
       tags: [Dashboard]
       summary: Get first-screen dashboard overview
       description: >
-        Returns location, latestWeather, latestAirQuality and basicStatistics.
+        Returns location, latestWeather, latestAirQuality and basicStatistics;
+        date may pin latestWeather to a fixed historical observation date.
         Historical trends, rankings and distributions remain separate endpoints.
       operationId: getDashboardOverview
       parameters:
         - $ref: '#/components/parameters/ProvinceOptional'
         - $ref: '#/components/parameters/CityRequired'
         - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/DateOptional'
       responses:
         '200':
           $ref: '#/components/responses/DashboardSuccess'
@@ -234,6 +255,16 @@ components:
         minLength: 1
         maxLength: 50
       example: 东城区
+    DateOptional:
+      name: date
+      in: query
+      required: false
+      description: Fixed observed date in the database; when omitted, the newest available date is selected.
+      schema:
+        type: string
+        format: date
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+      example: 2026-05-22
     Days:
       name: days
       in: query
@@ -550,6 +581,26 @@ components:
               message: {type: string, example: success}
               data:
                 $ref: '#/components/schemas/WeatherLatest'
+    WeatherDatesSuccess:
+      description: Available fixed weather observation dates.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items:
+                  type: string
+                  format: date
+              meta:
+                type: object
+                required: [count]
+                properties:
+                  count: {type: integer, minimum: 0, maximum: 1000}
     WeatherTrendSuccess:
       description: Historical weather trend records.
       content:
