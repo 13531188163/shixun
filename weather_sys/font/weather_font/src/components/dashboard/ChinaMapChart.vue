@@ -14,6 +14,7 @@ const props = defineProps({
   loading: Boolean,
   error: { type: String, default: '' },
 })
+const emit = defineEmits(['province-select'])
 
 const chartElement = ref(null)
 const mapReady = ref(false)
@@ -145,6 +146,10 @@ async function loadMap() {
   }
 }
 
+function handleMapClick(params) {
+  if (params?.name) emit('province-select', params.name)
+}
+
 onMounted(loadMap)
 useEChart(chartElement, buildOption, [
   () => mapReady.value,
@@ -153,7 +158,7 @@ useEChart(chartElement, buildOption, [
   () => props.airQuality?.aqi,
   () => props.loading,
   () => props.error,
-])
+], { click: handleMapClick })
 </script>
 
 <template>

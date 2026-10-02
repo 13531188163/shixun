@@ -1,7 +1,7 @@
 import * as echarts from 'echarts'
 import { nextTick, onBeforeUnmount, onMounted, watch } from 'vue'
 
-export function useEChart(elementRef, getOption, sources = []) {
+export function useEChart(elementRef, getOption, sources = [], eventHandlers = {}) {
   let chart
   let resizeObserver
   let resizeTimer
@@ -32,6 +32,10 @@ export function useEChart(elementRef, getOption, sources = []) {
       observeElement(chartElement)
     }
     chart.setOption(getOption() || {}, true)
+    Object.entries(eventHandlers).forEach(([eventName, handler]) => {
+      chart.off(eventName)
+      if (typeof handler === 'function') chart.on(eventName, handler)
+    })
     scheduleResize()
   }
 

@@ -1,17 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed } from 'vue'
 
 const props = defineProps({
   location: { type: Object, default: null },
+  dataDate: { type: String, default: '' },
   status: { type: String, default: '系统检查中' },
 })
-
-const now = ref(new Date())
-const timer = window.setInterval(() => {
-  now.value = new Date()
-}, 1000)
-
-onBeforeUnmount(() => window.clearInterval(timer))
 
 const locationLabel = computed(() => {
   const location = props.location || {}
@@ -22,24 +16,6 @@ const statusClass = computed(() => (
   /失败|检查|不可用|异常/.test(props.status) ? 'is-warning' : 'is-ready'
 ))
 
-function pad(value) {
-  return String(value).padStart(2, '0')
-}
-
-function formatDate(value) {
-  const parts = new Intl.DateTimeFormat('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    weekday: 'short',
-  }).formatToParts(value)
-  const get = (type) => parts.find((part) => part.type === type)?.value || ''
-  return `${get('year')}-${get('month')}-${get('day')} ${get('weekday')}`
-}
-
-function formatTime(value) {
-  return `${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`
-}
 </script>
 
 <template>
@@ -47,7 +23,7 @@ function formatTime(value) {
     <div class="header-context">
       <span class="context-kicker">CURRENT DATA REGION</span>
       <strong>{{ locationLabel }}</strong>
-      <span class="context-caption">历史最新记录 · API 数据源</span>
+      <span class="context-caption">固定历史日期 · API 数据源</span>
     </div>
 
     <div class="header-title-block">
@@ -57,8 +33,8 @@ function formatTime(value) {
     </div>
 
     <div class="header-time">
-      <span class="header-date">{{ formatDate(now) }}</span>
-      <strong>{{ formatTime(now) }}</strong>
+      <span class="header-date">固定数据日期</span>
+      <strong>{{ dataDate || '--' }}</strong>
       <span :class="['system-status', statusClass]"><i />{{ status }}</span>
     </div>
   </header>

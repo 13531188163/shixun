@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Optional
 
-from flask import Flask
+from flask import Flask, Response, send_from_directory
 from flask_cors import CORS
 from werkzeug.exceptions import HTTPException
 
@@ -19,6 +20,7 @@ from .utils.exceptions import AppException
 from .utils.response import error_response
 
 LOGGER = logging.getLogger(__name__)
+FRONTEND_DIST = Path(__file__).resolve().parents[1] / "font" / "weather_font" / "dist"
 
 
 def create_app(app_settings: Optional[Settings] = None) -> Flask:
@@ -47,8 +49,45 @@ def create_app(app_settings: Optional[Settings] = None) -> Flask:
     app.register_blueprint(weather_bp, url_prefix="/api/weather")
     app.register_blueprint(air_quality_bp, url_prefix="/api/air-quality")
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
+    _register_frontend_preview(app)
     _register_error_handlers(app)
     return app
+
+
+def _register_frontend_preview(app: Flask) -> None:
+    """Expose the built Dashboard from Flask for easy local preview.
+
+    The Vite dev server remains the preferred development workflow. When a
+    production bundle exists, opening the backend root is enough to preview
+    the same page without remembering a second URL.
+    """
+
+    setup_page = """<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>WeatherDemo 后端已启动</title>
+<style>body{font-family:system-ui,"Microsoft YaHei",sans-serif;background:#061a36;color:#eaf6ff;max-width:760px;margin:12vh auto;padding:32px}a{color:#65d7ff}code{color:#9fe8ff}</style></head>
+<body><h1>WeatherDemo 后端已启动</h1><p>Flask API 已在运行，但尚未找到前端生产构建文件。</p>
+<p>先在另一个终端执行：<code>cd weather_sys/font/weather_font</code>、<code>npm install</code>、<code>npm run build</code>，然后刷新本页；开发预览也可以打开 <a href="http://localhost:5173">http://localhost:5173</a>。</p>
+<p>健康检查：<a href="/api/health">/api/health</a></p></body></html>"""
+
+    @app.get("/")
+    def frontend_preview():
+        index_file = FRONTEND_DIST / "index.html"
+        if index_file.is_file():
+            return send_from_directory(FRONTEND_DIST, "index.html")
+        return Response(setup_page, status=200, mimetype="text/html")
+
+    @app.get("/assets/<path:filename>")
+    def frontend_assets(filename: str):
+        mimetype = "application/javascript" if filename.endswith(".js") else None
+        return send_from_directory(FRONTEND_DIST / "assets", filename, mimetype=mimetype)
+
+    @app.get("/maps/<path:filename>")
+    def frontend_maps(filename: str):
+        return send_from_directory(FRONTEND_DIST / "maps", filename)
+
+    @app.get("/favicon.svg")
+    def frontend_favicon():
+        return send_from_directory(FRONTEND_DIST, "favicon.svg")
 
 
 def _register_error_handlers(app: Flask) -> None:

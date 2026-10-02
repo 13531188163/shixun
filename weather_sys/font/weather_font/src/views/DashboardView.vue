@@ -8,7 +8,6 @@ import { getWeatherTrend, getCityWeatherComparison } from '../api/weather'
 import { getAirQualityRanking, getAirQualityDistribution } from '../api/airQuality'
 import DashboardHeader from '../components/dashboard/DashboardHeader.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
-import LocationSelector from '../components/dashboard/LocationSelector.vue'
 import WeatherOverview from '../components/dashboard/WeatherOverview.vue'
 import WeatherMetrics from '../components/dashboard/WeatherMetrics.vue'
 import WeatherTrendChart from '../components/dashboard/WeatherTrendChart.vue'
@@ -54,6 +53,7 @@ const loading = computed(() => locationLoading.value || payloadLoading.value)
 const basicStatistics = computed(() => dashboard.value?.basicStatistics || null)
 const cityComparisonDisplay = computed(() => cityComparison.value.slice(0, 6))
 const locationReady = computed(() => Boolean(selection.province && selection.city))
+const dataDate = computed(() => latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
 const apiStatus = computed(() => {
   if (pageError.value) return '需要检查 API'
   if (healthError.value) return '健康检查失败'
@@ -225,6 +225,32 @@ async function handleProvinceChange(province) {
   }
 }
 
+function mapProvinceToApiName(mapProvince) {
+  const value = String(mapProvince || '').trim()
+  if (!value) return ''
+  const direct = provinces.value.find((province) => province === value)
+  if (direct) return direct
+  const trimSuffix = (name) => String(name || '').replace(/省|市|自治区|特别行政区$/u, '')
+  const normalized = trimSuffix(value)
+  return provinces.value.find((province) => {
+    const candidate = trimSuffix(province)
+    return value.startsWith(province)
+      || province.startsWith(value)
+      || normalized === candidate
+      || normalized.startsWith(candidate)
+      || candidate.startsWith(normalized)
+  }) || value
+}
+
+async function handleMapProvinceSelect(mapProvince) {
+  const province = mapProvinceToApiName(mapProvince)
+  if (!provinces.value.includes(province)) {
+    pageError.value = `地图省份“${mapProvince}”暂无可查询记录`
+    return
+  }
+  await handleProvinceChange(province)
+}
+
 async function handleCityChange(city) {
   const version = ++requestVersion
   selection.city = city
@@ -291,20 +317,15 @@ onMounted(loadInitial)
 
 <template>
   <main class="dashboard-shell">
-    <DashboardHeader :location="dashboard?.location || selection" :status="apiStatus" />
+    <DashboardHeader :location="dashboard?.location || selection" :data-date="dataDate" :status="apiStatus" />
 
     <div class="dashboard-content">
       <div class="dashboard-toolbar">
-        <LocationSelector
-          :provinces="provinces"
-          :cities="cities"
-          :districts="districts"
-          :selection="selection"
-          :loading="loading"
-          @province-change="handleProvinceChange"
-          @city-change="handleCityChange"
-          @district-change="handleDistrictChange"
-        />
+        <div class="map-interaction-hint">
+          <span class="selector-label">全国地图</span>
+          <span>点击省份查看对应数据库记录</span>
+          <span v-if="dataDate" class="fixed-date">固定数据日期：{{ dataDate }}</span>
+        </div>
         <div class="toolbar-summary">
           <span :class="['api-status', { offline: pageError || healthError }]" aria-live="polite"><i />{{ apiStatus }}</span>
           <span v-if="locationReady">{{ selection.province }} / {{ selection.city }}</span>
@@ -338,6 +359,7 @@ onMounted(loadInitial)
               :statistics="basicStatistics"
               :loading="loading"
               :error="errors.overview"
+              @province-select="handleMapProvinceSelect"
             />
           </DashboardPanel>
         </section>
@@ -380,6 +402,29 @@ onMounted(loadInitial)
   text-align: right;
 }
 
+.map-interaction-hint {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.map-interaction-hint .selector-label {
+  color: var(--accent-cyan);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.fixed-date {
+  padding-left: 10px;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--color-panel-line);
+}
+
 .api-status {
   display: inline-flex;
   align-items: center;
@@ -400,6 +445,19 @@ onMounted(loadInitial)
 }
 
 @media (max-width: 680px) {
+  .map-interaction-hint {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .fixed-date {
+    padding-top: 5px;
+    padding-left: 0;
+    border-top: 1px solid var(--color-panel-line);
+    border-left: 0;
+  }
+
   .toolbar-summary {
     width: 100%;
     justify-content: flex-start;

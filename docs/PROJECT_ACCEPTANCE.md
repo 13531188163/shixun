@@ -14,7 +14,7 @@ Flask 负责统一响应、参数校验和业务服务调用；Vue 只通过 Axi
 
 ## 3. 已实现功能
 
-- 省份、城市、区县三级联动选择。
+- 全国地图省份点击，自动读取该省数据库中的代表城市和区县。
 - 最新天气概览：温度、风力和降水等数据库已有字段。
 - 历史温度趋势、城市温度比较。
 - 最新 AQI、AQI 排名和 AQI 等级分布。
@@ -45,7 +45,7 @@ Flask 负责统一响应、参数校验和业务服务调用；Vue 只通过 Axi
 
 ## 6. 前端验收
 
-前端真实目录为 `weather_sys/font/weather_font`。页面启动后可进入 Dashboard，选择器请求真实省市区数据，概览和图表请求后端数据。前端源码未使用 `Math.random()` 或 mock/fake 业务数据；也未展示数据库没有的 PM2.5、PM10、SO2、NO2、CO、O3、湿度、气压、紫外线和能见度指标。
+前端真实目录为 `weather_sys/font/weather_font`。页面启动后可进入 Dashboard，点击地图省份后自动请求真实地区数据，概览和图表随之刷新。页面展示数据库固定日期记录，不把浏览器当前时间当成实时数据。前端源码未使用 `Math.random()` 或 mock/fake 业务数据；也未展示数据库没有的 PM2.5、PM10、SO2、NO2、CO、O3、湿度、气压、紫外线和能见度指标。
 
 ## 7. 自动化测试与构建
 
@@ -60,7 +60,7 @@ Flask 负责统一响应、参数校验和业务服务调用；Vue 只通过 Axi
 
 ## 9. 地区切换
 
-已验证上海、云南临沧、内蒙古自治区乌兰察布三个真实地区。每次切换后地区选择器、中心位置、天气和 AQI 状态以及图表均刷新；快速切换不会保留上一地区的旧响应。
+已验证通过地图点击在上海、云南临沧、内蒙古自治区乌兰察布三个真实地区之间切换。每次点击后中心位置、天气和 AQI 状态以及图表均刷新；快速切换不会保留上一地区的旧响应。
 
 ## 10. 分辨率验收
 
@@ -79,9 +79,9 @@ Dashboard 所有业务数值来自 MySQL 查询或由已有字段计算。`lates
 ## 13. 运行步骤
 
 1. 准备 MySQL `weather_db`，确认根目录 `.env`。
-2. 在项目根目录运行 `python weather_sys/app.py`。
-3. 在 `weather_sys/font/weather_font` 运行 `npm install` 和 `npm run dev`。
-4. 浏览器打开 `http://localhost:5173`。
+2. 在 `weather_sys/font/weather_font` 运行 `npm install` 和 `npm run build`。
+3. 在项目根目录运行 `python weather_sys/app.py`。
+4. 浏览器打开 `http://127.0.0.1:5000/`；开发时也可以用 `npm run dev` 后打开 `http://localhost:5173`。
 
 ## 14. 交付文件
 

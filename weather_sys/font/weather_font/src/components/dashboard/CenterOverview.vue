@@ -11,6 +11,7 @@ const props = defineProps({
   loading: Boolean,
   error: { type: String, default: '' },
 })
+const emit = defineEmits(['province-select'])
 </script>
 
 <template>
@@ -18,9 +19,9 @@ const props = defineProps({
     <div class="center-overview">
       <div class="area-heading">
         <div>
-          <span class="area-kicker">CURRENT DATA REGION</span>
+          <span class="area-kicker">FIXED DATA DATE</span>
           <h3>{{ location?.province || '--' }} · {{ location?.city || '--' }}</h3>
-          <p>{{ location?.district || '稳定代表区县' }} · 最新可用记录</p>
+          <p>{{ location?.district || '稳定代表区县' }} · {{ weather?.date || '固定日期数据' }}</p>
         </div>
         <div class="center-aqi">
           <span>AQI</span>
@@ -36,6 +37,7 @@ const props = defineProps({
           :air-quality="airQuality"
           :loading="loading"
           :error="error"
+          @province-select="emit('province-select', $event)"
         />
         <div class="map-weather-badge">
           <span>{{ weather?.weather || '--' }}</span>
