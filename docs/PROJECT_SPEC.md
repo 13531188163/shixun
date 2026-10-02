@@ -95,7 +95,7 @@ Service/utils 层提供 normalize_city_name()，采用显式映射而不是盲�
 | 当前天气概况 | /api/weather/latest | weather_data.city、district、date、weather、max_temp、min_temp | 支持 | latest 是历史库最新日期，不是 realtime |
 | 城市温度比较 | /api/weather/city-comparison | weather_data.city、date、max_temp、min_temp | 支持 | 只返回数据库存在的城市，查询数量受限 |
 | 天气趋势 | /api/weather/trend | weather_data.date、max_temp、min_temp、avg_wind、max_wind、total_precip、weather | 支持 | 历史趋势；不命名为预报 |
-| 全国地图 / 城市点位 | /api/air-quality/ranking、/api/locations/* | air_quality_data.city、province、aqi、status | 部分支持 | 有城市和省份数值，但没有经纬度、边界或地图拓扑，不能承诺真实地理地图 |
+| 全国地图 / 城市点位 | /api/air-quality/ranking、/api/locations/* | air_quality_data.city、province、aqi、status | 部分支持 | 前端内置公开中国行政区边界并高亮当前省份；数据库没有经纬度，暂不绘制城市地理点位 |
 | AQI 最新值 | /api/air-quality/latest | air_quality_data.city、province、aqi、status、created_at | 支持 | 按快照时间选取；没有污染物浓度明细 |
 | AQI 排名 TOP10 | /api/air-quality/ranking | air_quality_data.city、province、aqi、status | 支持 | aqi 字符串转整数后排序，默认升序为较好排名 |
 | 空气质量等级分布 | /api/air-quality/distribution | air_quality_data.status | 支持 | 当前样例实际出现 优、良、轻度；空 status 不计入已知等级 |

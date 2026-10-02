@@ -1,5 +1,6 @@
 <script setup>
 import ChartState from './ChartState.vue'
+import ChinaMapChart from './ChinaMapChart.vue'
 import { formatNumber, formatDateTime, formatTemperature } from '../../utils/formatters'
 
 const props = defineProps({
@@ -28,18 +29,18 @@ const props = defineProps({
         </div>
       </div>
 
-      <div class="data-visual-placeholder" aria-label="区域数据抽象可视化区域">
-        <div class="visual-grid" aria-hidden="true" />
-        <span class="visual-orbit orbit-one" aria-hidden="true" />
-        <span class="visual-orbit orbit-two" aria-hidden="true" />
-        <div class="visual-core" aria-label="当前天气核心数据">
+      <div class="data-map" aria-label="全国行政区天气与空气质量地图">
+        <ChinaMapChart
+          :location="location"
+          :weather="weather"
+          :air-quality="airQuality"
+          :loading="loading"
+          :error="error"
+        />
+        <div class="map-weather-badge">
           <span>{{ weather?.weather || '--' }}</span>
           <strong>{{ formatTemperature(weather?.maxTemp) }}</strong>
-          <small>最高温</small>
-        </div>
-        <div class="visual-caption">
-          <b>区域数据聚合视图</b>
-          <span>区域空间视图 · 地理边界待接入</span>
+          <small>当前最高温</small>
         </div>
       </div>
 
@@ -112,90 +113,46 @@ h3 {
   color: var(--accent-green);
 }
 
-.data-visual-placeholder {
+.data-map {
   position: relative;
   display: grid;
   min-height: 0;
   flex: 1;
-  place-items: center;
   overflow: hidden;
   background: radial-gradient(circle, rgb(30 159 223 / 16%), transparent 58%), rgb(2 23 49 / 68%);
   border: 1px solid rgb(43 157 216 / 34%);
   border-radius: 8px;
 }
 
-.visual-grid {
+.map-weather-badge {
   position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(90deg, transparent 0 34px, rgb(55 159 216 / 10%) 34px 35px), repeating-linear-gradient(0deg, transparent 0 34px, rgb(55 159 216 / 10%) 34px 35px);
-  transform: perspective(260px) rotateX(55deg) translateY(42px) scale(1.35);
-  transform-origin: center bottom;
-}
-
-.visual-orbit,
-.visual-core {
-  position: absolute;
-  border: 1px solid rgb(62 229 255 / 52%);
-  border-radius: 50%;
-}
-
-.visual-orbit {
-  width: 190px;
-  height: 94px;
-  box-shadow: 0 0 18px rgb(32 201 255 / 25%);
-  transform: rotate(-24deg);
-}
-
-.orbit-two {
-  width: 270px;
-  height: 135px;
-  border-color: rgb(67 140 255 / 44%);
-  transform: rotate(34deg);
-}
-
-.visual-core {
+  right: 17px;
+  bottom: 42px;
   display: grid;
-  width: 100px;
-  height: 100px;
-  place-items: center;
+  min-width: 88px;
+  padding: 8px 10px;
+  place-items: end;
   align-content: center;
   gap: 2px;
   color: var(--text-primary);
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  background: radial-gradient(circle, rgb(62 229 255 / 44%), rgb(8 58 101 / 80%) 58%, transparent 64%);
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 32px rgb(32 201 255 / 50%);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  background: rgb(3 27 57 / 78%);
+  border: 1px solid rgb(50 201 238 / 56%);
+  border-radius: 5px;
+  box-shadow: 0 0 20px rgb(32 201 255 / 22%);
 }
 
-.visual-core strong {
+.map-weather-badge strong {
   color: var(--color-text);
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1;
 }
 
-.visual-core small {
+.map-weather-badge small {
   color: var(--color-text-muted);
   font-size: 9px;
   letter-spacing: 0.04em;
-}
-
-.visual-caption {
-  position: absolute;
-  right: 15px;
-  bottom: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 3px;
-  color: var(--text-muted);
-  font-size: 9px;
-  letter-spacing: 0.08em;
-}
-
-.visual-caption b {
-  color: var(--text-secondary);
-  font-size: 11px;
 }
 
 .center-facts {

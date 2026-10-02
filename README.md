@@ -51,6 +51,7 @@ weatherdemo/
     ├── app.py                      # Flask 后端启动入口
     ├── backend/{config,models,routes,services,utils}/
     └── font/weather_font/          # Vue 3 + Vite 前端工程
+        └── public/maps/china.json  # 中国行政区边界展示资源
 ```
 
 ## 环境要求
@@ -192,6 +193,6 @@ weatherdemo/
 
 ### API 与数据限制
 
-所有接口使用 `/api` 前缀，统一返回 `code/message/data`，完整契约见 `docs/API_SPEC.md` 和 `docs/openapi.yaml`。`latest` 是数据库观测日期字段可得到的最新记录，不代表实时气象服务。数据库未提供 PM2.5、PM10、SO2、NO2、CO、O3、湿度、气压、紫外线、能见度、预警和健康建议字段，系统没有伪造这些指标；当前也没有真实地理边界地图。
+所有接口使用 `/api` 前缀，统一返回 `code/message/data`，完整契约见 `docs/API_SPEC.md` 和 `docs/openapi.yaml`。`latest` 是数据库观测日期字段可得到的最新记录，不代表实时气象服务。中心区域使用本地中国行政区边界资源并高亮当前省份；数据库没有经纬度字段，因此不伪造城市地图点位。数据库未提供 PM2.5、PM10、SO2、NO2、CO、O3、湿度、气压、紫外线、能见度、预警和健康建议字段，系统没有伪造这些指标。
 
 最终截图：[docs/screenshots/dashboard-final.png](docs/screenshots/dashboard-final.png)。完整验收结果见 [docs/PROJECT_ACCEPTANCE.md](docs/PROJECT_ACCEPTANCE.md)。
