@@ -203,6 +203,7 @@ def get_weather_history_by_date(
     province: str | None = None,
     district: str | None = None,
     days: int = _DEFAULT_HISTORY_LIMIT,
+    end_date: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return one stable representative row for each of the latest dates.
 
@@ -214,6 +215,12 @@ def get_weather_history_by_date(
     _require_city(city)
     _validate_history_limit(days)
     clauses, params = _location_filters(province=province, city=city, district=district)
+    if end_date is not None:
+        clauses.append(
+            "STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') "
+            "<= STR_TO_DATE(%s, '%%Y-%%m-%%d')"
+        )
+        params.append(end_date)
     where_sql = " AND ".join(clauses)
     sql = (
         "SELECT "
@@ -245,6 +252,7 @@ def get_weather_history_by_date(
 def get_city_weather_latest(
     cities: Iterable[str],
     province: str | None = None,
+    date: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return at most one latest row per requested city.
 
@@ -260,7 +268,7 @@ def get_city_weather_latest(
     return [
         row
         for city in city_names
-        if (row := get_latest_weather(city=city, province=province)) is not None
+        if (row := get_latest_weather(city=city, province=province, date=date)) is not None
     ]
 
 

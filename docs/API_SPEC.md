@@ -311,13 +311,13 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - Method：GET
 - URL：/api/weather/trend
 - 业务用途：获取历史最高温、最低温、风速和降水趋势，供 ECharts 映射。
-- Query 参数：province、city、district、days。
-- 参数类型：string、string、string、integer。
-- 是否必填：province 否；city 是；district 否；days 否。
-- 默认值：days=7；province 由 city 反查；district 缺省使用每个日期的稳定代表记录。
-- 参数约束：days 为 1-90 整数；名称长度 1-50；必须按 date 限制查询范围。
+- Query 参数：province、city、district、days、date。
+- 参数类型：string、string、string、integer、date。
+- 是否必填：province 否；city 是；district 否；days 否；date 否。
+- 默认值：days=7；province 由 city 反查；district 缺省使用每个日期的稳定代表记录；date 缺省以数据库最新日期为结束日期。
+- 参数约束：days 为 1-90 整数；名称长度 1-50；date 为 YYYY-MM-DD；必须按解析后的 date 限制查询范围。
 - 数据来源表：weather_data。
-- 数据计算方式：筛选位置后按解析 date 取最近 days 个可用日期，升序返回；每个日期选 district、id 稳定代表记录；转换天气数值。
+- 数据计算方式：筛选位置后按解析 date 取截至 date（含该日）的最近 days 个可用日期，升序返回；每个日期选 district、id 稳定代表记录；转换天气数值。
 - 成功示例：
 
       {
@@ -357,14 +357,14 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 接口名称：城市天气比较
 - Method：GET
 - URL：/api/weather/city-comparison
-- 业务用途：返回多个城市最新代表天气，用于最高温/最低温柱状图。
-- Query 参数：cities。
-- 参数类型：string。
-- 是否必填：是。
+- 业务用途：返回多个城市在最新可用日期或指定固定日期的代表天气，用于最高温/最低温柱状图。
+- Query 参数：cities、date。
+- 参数类型：string、date。
+- 是否必填：cities 是；date 否。
 - 默认值：无。
-- 参数约束：逗号分隔 1-10 个城市；每个名称长度 1-50；去重；不存在城市不补零。
+- 参数约束：逗号分隔 1-10 个城市；每个名称长度 1-50；去重；date 为 YYYY-MM-DD；不存在城市不补零。
 - 数据来源表：weather_data。
-- 数据计算方式：每个城市按 latest 规则选取同一代表记录，转换 JSON 字段；返回顺序与输入顺序一致。
+- 数据计算方式：未提供 date 时每个城市按 latest 规则选取记录，提供 date 时每个城市选该固定观测日记录；转换 JSON 字段；返回顺序与输入顺序一致。
 - 成功示例：
 
       {

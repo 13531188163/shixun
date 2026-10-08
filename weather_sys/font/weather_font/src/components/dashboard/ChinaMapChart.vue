@@ -11,6 +11,7 @@ const props = defineProps({
   location: { type: Object, default: null },
   weather: { type: Object, default: null },
   airQuality: { type: Object, default: null },
+  detailProvince: { type: String, default: '' },
   loading: Boolean,
   error: { type: String, default: '' },
 })
@@ -20,6 +21,7 @@ const chartElement = ref(null)
 const mapReady = ref(false)
 const mapError = ref('')
 const mapFeatures = ref([])
+const mapGeoJson = ref(null)
 
 function provinceNameForMap(province) {
   if (!province || !mapFeatures.value.length) return ''
@@ -30,9 +32,42 @@ function provinceNameForMap(province) {
 }
 
 const selectedProvince = computed(() => provinceNameForMap(props.location?.province))
+const detailProvince = computed(() => provinceNameForMap(props.detailProvince))
+
+function collectPoints(value, points = []) {
+  if (!Array.isArray(value)) return points
+  if (typeof value[0] === 'number' && typeof value[1] === 'number') {
+    points.push(value)
+    return points
+  }
+  value.forEach((item) => collectPoints(item, points))
+  return points
+}
+
+function provinceView(name) {
+  if (!name || !mapGeoJson.value) return null
+  const feature = mapGeoJson.value.features?.find((item) => item?.properties?.name === name)
+  const points = collectPoints(feature?.geometry?.coordinates)
+  if (!points.length) return null
+  const longitudes = points.map((point) => point[0])
+  const latitudes = points.map((point) => point[1])
+  const minLongitude = Math.min(...longitudes)
+  const maxLongitude = Math.max(...longitudes)
+  const minLatitude = Math.min(...latitudes)
+  const maxLatitude = Math.max(...latitudes)
+  const span = Math.max(maxLongitude - minLongitude, maxLatitude - minLatitude)
+  return {
+    center: [(minLongitude + maxLongitude) / 2, (minLatitude + maxLatitude) / 2],
+    zoom: Math.min(7, Math.max(1.7, 38 / Math.max(span, 1))),
+  }
+}
+
+const detailView = computed(() => provinceView(detailProvince.value))
 
 function buildOption() {
   const selected = selectedProvince.value
+  const detail = detailProvince.value
+  const view = detailView.value
   const mapData = mapFeatures.value.map((name) => ({
     name,
     value: name === selected ? 1 : 0,
@@ -56,8 +91,9 @@ function buildOption() {
       map: MAP_NAME,
       roam: false,
       silent: false,
-      layoutCenter: ['50%', '49%'],
-      layoutSize: '110%',
+      layoutCenter: ['50%', detail ? '50%' : '49%'],
+      layoutSize: detail ? '118%' : '110%',
+      ...(view ? { center: view.center, zoom: view.zoom } : {}),
       selectedMode: false,
       itemStyle: {
         areaColor: 'rgba(12, 69, 116, 0.66)',
@@ -78,7 +114,10 @@ function buildOption() {
         show: true,
         color: 'rgba(186, 226, 245, 0.68)',
         fontSize: 9,
-        formatter: (params) => params.name.replace(/省|市|自治区|特别行政区$/u, ''),
+        formatter: (params) => {
+          if (detail && params.name !== detail) return ''
+          return params.name.replace(/省|市|自治区|特别行政区$/u, '')
+        },
       },
       regions: selected ? [{
         name: selected,
@@ -99,6 +138,7 @@ function buildOption() {
       geoIndex: 0,
       roam: false,
       silent: false,
+      ...(view ? { center: view.center, zoom: view.zoom } : {}),
       data: mapData,
       label: { show: false },
       itemStyle: { areaColor: 'transparent', borderColor: 'transparent' },
@@ -110,7 +150,7 @@ function buildOption() {
         left: 18,
         top: 15,
         style: {
-          text: '全国行政区数据视图',
+          text: detail ? `${detail}省级详细视图` : '全国行政区数据视图',
           fill: '#9ed9f2',
           font: '600 12px Microsoft YaHei, sans-serif',
         },
@@ -120,7 +160,7 @@ function buildOption() {
         right: 16,
         bottom: 15,
         style: {
-          text: selected ? `当前高亮：${selected}` : '当前省份待选择',
+          text: detail ? '省份已放大 · 可返回全国' : (selected ? `当前高亮：${selected}` : '当前省份待选择'),
           fill: CHART_COLORS.cyan,
           font: '11px Microsoft YaHei, sans-serif',
           textAlign: 'right',
@@ -137,6 +177,7 @@ async function loadMap() {
     const geoJson = await response.json()
     if (!geoJson?.features?.length) throw new Error('地图资源为空')
     echarts.registerMap(MAP_NAME, geoJson)
+    mapGeoJson.value = geoJson
     mapFeatures.value = geoJson.features
       .map((feature) => feature?.properties?.name)
       .filter(Boolean)
@@ -154,6 +195,7 @@ onMounted(loadMap)
 useEChart(chartElement, buildOption, [
   () => mapReady.value,
   () => selectedProvince.value,
+  () => detailProvince.value,
   () => props.weather?.weather,
   () => props.airQuality?.aqi,
   () => props.loading,

@@ -172,6 +172,7 @@ def get_weather_trend(
     province: str | None = None,
     district: str | None = None,
     days: int = _DEFAULT_TREND_DAYS,
+    date: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return one stable representative row for each of the latest dates.
 
@@ -184,12 +185,15 @@ def get_weather_trend(
     province_value = _location_name(province, field="province")
     district_value = _location_name(district, field="district")
     day_count = _validate_days(days)
-    rows = weather_model.get_weather_history_by_date(
-        city=city_value,
-        province=province_value,
-        district=district_value,
-        days=day_count,
-    )
+    history_params: dict[str, Any] = {
+        "city": city_value,
+        "province": province_value,
+        "district": district_value,
+        "days": day_count,
+    }
+    if date is not None:
+        history_params["end_date"] = _validate_observation_date(date)
+    rows = weather_model.get_weather_history_by_date(**history_params)
 
     representatives: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -242,12 +246,16 @@ def compare_cities(
     cities: str | Sequence[str] | Iterable[str],
     *,
     province: str | None = None,
+    date: str | None = None,
 ) -> dict[str, Any]:
     """Return latest weather rows in input order and comparison metadata."""
 
     city_names = _parse_city_names(cities)
     province_value = _location_name(province, field="province")
-    rows = weather_model.get_city_weather_latest(city_names, province=province_value)
+    comparison_params: dict[str, Any] = {"province": province_value}
+    if date is not None:
+        comparison_params["date"] = _validate_observation_date(date)
+    rows = weather_model.get_city_weather_latest(city_names, **comparison_params)
     by_name = {normalize_city_name(row.get("city")): row for row in rows}
     data: list[dict[str, Any]] = []
     for requested_name in city_names:

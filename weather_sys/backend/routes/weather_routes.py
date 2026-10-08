@@ -33,6 +33,9 @@ def weather_dates():
 @weather_bp.get("/trend")
 def weather_trend():
     location = weather_location_params()
+    selected_date = date_param()
+    if selected_date is not None:
+        location["date"] = selected_date
     days = integer_param("days", default=7, minimum=1, maximum=90)
     data = weather_service.get_weather_trend(**location, days=days)
     # 区分不存在的位置与存在但没有有效日期记录的位置。
@@ -43,5 +46,7 @@ def weather_trend():
 
 @weather_bp.get("/city-comparison")
 def city_comparison():
-    result = weather_service.compare_cities(cities_param())
+    selected_date = date_param()
+    params = {"date": selected_date} if selected_date is not None else {}
+    result = weather_service.compare_cities(cities_param(), **params)
     return success_response(data=result["data"], meta=result["meta"])

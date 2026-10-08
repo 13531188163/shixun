@@ -3,6 +3,7 @@ defineProps({
   loading: Boolean,
   error: { type: String, default: '' },
   empty: Boolean,
+  emptyMessage: { type: String, default: '暂无数据' },
 })
 </script>
 
@@ -12,6 +13,6 @@ defineProps({
     <span>正在读取真实数据…</span>
   </div>
   <div v-else-if="error" class="panel-state error">{{ error }}</div>
-  <div v-else-if="empty" class="panel-state">暂无数据</div>
+  <div v-else-if="empty" class="panel-state">{{ emptyMessage }}</div>
   <slot v-else />
 </template>

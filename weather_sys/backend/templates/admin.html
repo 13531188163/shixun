@@ -42,8 +42,8 @@
         <p class="lead">这是 Flask 后端的运行与接口管理页面，不是 Vue 天气可视化大屏。</p>
       </div>
       <nav class="links" aria-label="页面链接">
-        <a href="{{ frontend_dev_url }}" target="_blank" rel="noreferrer">打开 Vue 前端大屏</a>
-        <a href="{{ frontend_build_url }}" target="_blank" rel="noreferrer">打开构建版大屏</a>
+        <a href="{{ frontend_dev_url }}" target="_blank" rel="noreferrer">打开 Vue 前端大屏（5173）</a>
+        <a href="{{ frontend_build_url }}" target="_blank" rel="noreferrer">打开构建版大屏（/dashboard）</a>
         <a href="/api/health" target="_blank" rel="noreferrer">API 健康检查</a>
       </nav>
     </header>
@@ -54,6 +54,8 @@
       <div class="card"><div class="card-label">当前数据库</div><div class="card-value">{{ database_name }}</div></div>
       <div class="card"><div class="card-label">管理入口</div><div class="card-value">/admin</div></div>
     </section>
+
+    <p class="lead">前端开发页需要另开终端运行 <code>npm run dev</code>；构建版需要先运行 <code>npm run build</code>。后台管理台与前端大屏是两个独立页面。</p>
 
     {% if not database_ok %}<div class="notice" role="alert">数据库健康检查失败。请检查 MySQL 服务与项目 .env 配置；管理页仍可打开，但业务 API 可能不可用。</div>{% endif %}
 

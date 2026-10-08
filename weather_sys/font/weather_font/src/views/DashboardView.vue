@@ -23,6 +23,7 @@ const districts = ref([])
 const availableDates = ref([])
 const selection = reactive({ province: '', city: '', district: '' })
 const selectedDate = ref('')
+const mapDetailProvince = ref('')
 const health = ref(null)
 const healthError = ref('')
 
@@ -145,11 +146,12 @@ async function loadSelectedData(version) {
   }
   if (version !== requestVersion) return
 
+  const dateParams = selectedDate.value ? { date: selectedDate.value } : {}
   const [requests] = await Promise.all([
     Promise.allSettled([
       getDashboardOverview(overviewParams),
-      getWeatherTrend({ ...params, days: 7 }),
-      getCityWeatherComparison({ cities: comparisonCities.join(',') }),
+      getWeatherTrend({ ...params, ...dateParams, days: 7 }),
+      getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams }),
     ]),
     ensureSharedAirQuality(),
   ])
@@ -271,7 +273,12 @@ async function handleMapProvinceSelect(mapProvince) {
     pageError.value = `地图省份“${mapProvince}”暂无可查询记录`
     return
   }
+  mapDetailProvince.value = province
   await handleProvinceChange(province)
+}
+
+function handleMapReset() {
+  mapDetailProvince.value = ''
 }
 
 async function handleCityChange(city) {
@@ -359,7 +366,7 @@ onMounted(loadInitial)
       <div class="dashboard-toolbar">
         <div class="map-interaction-hint">
           <span class="selector-label">全国地图</span>
-          <span>点击省份查看对应数据库记录</span>
+          <span>点击省份进入省级详细地图，再选择城市、区县和日期</span>
           <span v-if="dataDate" class="fixed-date">固定数据日期：{{ dataDate }}</span>
         </div>
         <div class="toolbar-summary">
@@ -396,16 +403,16 @@ onMounted(loadInitial)
 
       <div class="dashboard-grid">
         <section class="dashboard-column left-column" aria-label="天气数据">
-          <DashboardPanel title="当前天气概况" subtitle="weather/latest · 历史可获得最新记录">
+          <DashboardPanel title="当前天气概况" subtitle="weather/latest · 所选固定日期记录">
             <WeatherOverview :weather="latestWeather" :loading="loading" :error="errors.weather" />
           </DashboardPanel>
           <DashboardPanel title="天气指标" subtitle="仅展示数据库支持的天气字段">
             <WeatherMetrics :weather="latestWeather" :air-quality="latestAirQuality" :loading="loading" :error="errors.weather" />
           </DashboardPanel>
-          <DashboardPanel title="主要城市温度比较" subtitle="city-comparison · 实际返回城市">
+          <DashboardPanel title="主要城市温度比较" subtitle="city-comparison · 所选日期实际返回城市">
             <CityComparisonChart :data="cityComparisonDisplay" :loading="loading" :error="errors.comparison" />
           </DashboardPanel>
-          <DashboardPanel title="历史天气趋势" subtitle="trend · 最高 / 最低温度，不代表预报">
+          <DashboardPanel title="历史天气趋势" subtitle="trend · 所选日期向前 7 个观测日，不代表预报">
             <WeatherTrendChart :data="weatherTrend" :loading="loading" :error="errors.trend" />
           </DashboardPanel>
         </section>
@@ -417,21 +424,28 @@ onMounted(loadInitial)
               :weather="latestWeather"
               :air-quality="latestAirQuality"
               :statistics="basicStatistics"
+              :detail-province="mapDetailProvince"
               :loading="loading"
               :error="errors.overview"
               @province-select="handleMapProvinceSelect"
+              @map-reset="handleMapReset"
             />
           </DashboardPanel>
         </section>
 
         <section class="dashboard-column right-column" aria-label="空气质量数据">
-          <DashboardPanel title="空气质量概况" subtitle="air-quality/latest · 快照数据">
-            <AirQualityOverview :air-quality="latestAirQuality" :loading="loading" :error="errors.airQuality" />
+          <DashboardPanel title="空气质量概况" subtitle="air-quality/latest · 固定快照，不随天气日期变化">
+            <AirQualityOverview
+              :air-quality="latestAirQuality"
+              :location="selection"
+              :loading="loading"
+              :error="errors.airQuality"
+            />
           </DashboardPanel>
-          <DashboardPanel title="AQI 低值城市 TOP10" subtitle="ranking · AQI 从低到高（越低越好）">
+          <DashboardPanel title="AQI 低值城市 TOP10" subtitle="ranking · 固定快照，从低到高（越低越好）">
             <AirQualityRankingChart :data="airQualityRanking" :loading="loading" :error="errors.ranking" />
           </DashboardPanel>
-          <DashboardPanel title="空气质量等级分布" subtitle="distribution · 仅统计实际返回等级">
+          <DashboardPanel title="空气质量等级分布" subtitle="distribution · 固定快照实际返回等级">
             <AirQualityDistributionChart :data="airQualityDistribution" :loading="loading" :error="errors.distribution" />
           </DashboardPanel>
         </section>

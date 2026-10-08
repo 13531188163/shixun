@@ -118,12 +118,13 @@ paths:
     get:
       tags: [Weather]
       summary: Get historical weather trend
-      description: Returns historical records for the requested number of dates; it is not a forecast.
+      description: Returns historical records for the requested number of dates ending at date when provided; it is not a forecast.
       operationId: getWeatherTrend
       parameters:
         - $ref: '#/components/parameters/ProvinceOptional'
         - $ref: '#/components/parameters/CityRequired'
         - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/DateOptional'
         - $ref: '#/components/parameters/Days'
       responses:
         '200':
@@ -137,10 +138,11 @@ paths:
   /api/weather/city-comparison:
     get:
       tags: [Weather]
-      summary: Compare latest weather for multiple cities
+      summary: Compare weather for multiple cities on an optional fixed date
       operationId: compareCityWeather
       parameters:
         - $ref: '#/components/parameters/Cities'
+        - $ref: '#/components/parameters/DateOptional'
       responses:
         '200':
           $ref: '#/components/responses/WeatherComparisonSuccess'

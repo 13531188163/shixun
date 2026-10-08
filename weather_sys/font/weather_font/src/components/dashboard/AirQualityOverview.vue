@@ -5,8 +5,14 @@ import { aqiStatusClass, formatDateTime, formatNumber } from '../../utils/format
 
 const props = defineProps({
   airQuality: { type: Object, default: null },
+  location: { type: Object, default: null },
   loading: Boolean,
   error: { type: String, default: '' },
+})
+
+const emptyMessage = computed(() => {
+  const city = props.location?.city || '当前城市'
+  return `${city}暂无空气质量快照（AQI 表未覆盖）`
 })
 
 const gaugeStyle = computed(() => {
@@ -17,7 +23,7 @@ const gaugeStyle = computed(() => {
 </script>
 
 <template>
-  <ChartState :loading="loading" :error="error" :empty="!props.airQuality">
+  <ChartState :loading="loading" :error="error" :empty="!props.airQuality" :empty-message="emptyMessage">
     <div class="air-quality-overview">
       <div class="aqi-gauge" :style="gaugeStyle">
         <div class="aqi-gauge-inner">

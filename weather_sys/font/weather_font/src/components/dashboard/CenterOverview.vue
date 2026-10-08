@@ -8,10 +8,11 @@ const props = defineProps({
   weather: { type: Object, default: null },
   airQuality: { type: Object, default: null },
   statistics: { type: Object, default: null },
+  detailProvince: { type: String, default: '' },
   loading: Boolean,
   error: { type: String, default: '' },
 })
-const emit = defineEmits(['province-select'])
+const emit = defineEmits(['province-select', 'map-reset'])
 </script>
 
 <template>
@@ -35,10 +36,17 @@ const emit = defineEmits(['province-select'])
           :location="location"
           :weather="weather"
           :air-quality="airQuality"
+          :detail-province="detailProvince"
           :loading="loading"
           :error="error"
           @province-select="emit('province-select', $event)"
         />
+        <button
+          v-if="detailProvince"
+          type="button"
+          class="map-reset"
+          @click="emit('map-reset')"
+        >返回全国</button>
         <div class="map-weather-badge">
           <span>{{ weather?.weather || '--' }}</span>
           <strong>{{ formatTemperature(weather?.maxTemp) }}</strong>
@@ -143,6 +151,25 @@ h3 {
   border: 1px solid rgb(50 201 238 / 56%);
   border-radius: 5px;
   box-shadow: 0 0 20px rgb(32 201 255 / 22%);
+}
+
+.map-reset {
+  position: absolute;
+  top: 13px;
+  right: 14px;
+  z-index: 2;
+  padding: 5px 9px;
+  color: var(--text-secondary);
+  font: 11px/1.2 inherit;
+  background: rgb(4 31 64 / 86%);
+  border: 1px solid rgb(64 193 236 / 58%);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.map-reset:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-cyan);
 }
 
 .map-weather-badge strong {

@@ -68,7 +68,7 @@ def _register_frontend_dashboard(app: Flask) -> None:
 <html lang="zh-CN"><head><meta charset="utf-8"><title>WeatherDemo 后端已启动</title>
 <style>body{font-family:system-ui,"Microsoft YaHei",sans-serif;background:#061a36;color:#eaf6ff;max-width:760px;margin:12vh auto;padding:32px}a{color:#65d7ff}code{color:#9fe8ff}</style></head>
 <body><h1>WeatherDemo 后端已启动</h1><p>Flask API 已在运行，但尚未找到前端生产构建文件。</p>
-<p>先在另一个终端执行：<code>cd weather_sys/font/weather_font</code>、<code>npm install</code>、<code>npm run build</code>，然后刷新本页；开发预览也可以打开 <a href="http://localhost:5173">http://localhost:5173</a>。</p>
+<p>构建版需要先在另一个终端执行：<code>cd weather_sys/font/weather_font</code>、<code>npm install</code>、<code>npm run build</code>，然后刷新本页；开发预览需要运行 <code>npm run dev</code> 后打开 <a href="http://localhost:5173">http://localhost:5173</a>。</p>
 <p>健康检查：<a href="/api/health">/api/health</a></p></body></html>"""
 
     @app.get("/dashboard")
