@@ -149,21 +149,65 @@ def get_latest_weather(
 
 def list_weather_dates(
     *,
-    city: str,
+    city: str | None = None,
     province: str | None = None,
     district: str | None = None,
 ) -> list[str]:
     """Return real observation dates available for the selected location."""
 
-    city_value = _location_name(city, field="city", required=True)
+    city_value = _location_name(city, field="city")
     province_value = _location_name(province, field="province")
     district_value = _location_name(district, field="district")
+    if city_value is None and province_value is None:
+        raise ValueError("province or city is required")
     rows = weather_model.get_weather_dates(
         city=city_value,
         province=province_value,
         district=district_value,
     )
     return [formatted for row in rows if (formatted := format_date(row.get("date"))) is not None]
+
+
+def get_province_weather_overview(
+    *, province: str, date: str | None = None
+) -> dict[str, Any] | None:
+    """Return one province-wide weather aggregate for a fixed observation date."""
+
+    province_value = _location_name(province, field="province", required=True)
+    selected_date = _validate_observation_date(date) if date is not None else None
+    row = weather_model.get_province_weather_overview(province_value, selected_date)
+    if row is None:
+        return None
+    return {
+        "province": normalize_province_name(province_value),
+        "city": None,
+        "district": None,
+        "date": format_date(row.get("date")),
+        "weather": row.get("weather"),
+        "maxTemp": parse_temperature(row.get("max_temp")),
+        "minTemp": parse_temperature(row.get("min_temp")),
+        "avgWind": parse_wind_speed(row.get("avg_wind")),
+        "maxWind": parse_wind_speed(row.get("max_wind")),
+        "precipitation": parse_precipitation(row.get("total_precip")),
+        "scope": "province",
+        "cityCount": int(row.get("city_count") or 0),
+        "districtCount": int(row.get("district_count") or 0),
+        "recordCount": int(row.get("record_count") or 0),
+    }
+
+
+def get_province_weather_trend(
+    *, province: str, days: int = _DEFAULT_TREND_DAYS, date: str | None = None
+) -> list[dict[str, Any]]:
+    """Return date-level weather aggregates for one province."""
+
+    province_value = _location_name(province, field="province", required=True)
+    day_count = _validate_days(days)
+    end_date = _validate_observation_date(date) if date is not None else None
+    rows = weather_model.get_province_weather_trend(
+        province_value, end_date=end_date, days=day_count
+    )
+    return [_trend_payload(row) for row in reversed(rows)]
 
 
 def get_weather_trend(

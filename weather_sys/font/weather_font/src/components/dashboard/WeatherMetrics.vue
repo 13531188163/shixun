@@ -5,6 +5,7 @@ import { formatNumber, formatTemperature, formatWind, formatPrecipitation } from
 const props = defineProps({
   weather: { type: Object, default: null },
   airQuality: { type: Object, default: null },
+  airQualitySummary: { type: Object, default: null },
   loading: Boolean,
   error: { type: String, default: '' },
 })
@@ -27,8 +28,8 @@ const metrics = [
       </article>
       <article class="metric-card aqi-card">
         <span>空气质量 AQI</span>
-        <strong>{{ formatNumber(airQuality?.aqi) }}</strong>
-        <small>{{ airQuality?.status || '暂无等级' }}</small>
+        <strong>{{ formatNumber(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
+        <small>{{ airQuality?.status || (airQualitySummary ? '省级平均 AQI' : '暂无等级') }}</small>
       </article>
     </div>
   </ChartState>

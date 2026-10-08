@@ -140,6 +140,30 @@ def get_air_quality_distribution_result() -> dict[str, Any]:
     }
 
 
+def get_province_air_quality_summary(province: str) -> dict[str, Any] | None:
+    """Return an AQI summary for the fixed province snapshot, if available."""
+
+    province_value = _required_text(province, "province")
+    row = air_quality_model.get_province_air_quality_summary(province_value)
+    if not row:
+        return None
+    average = row.get("average_aqi")
+    try:
+        average_value = float(average) if average is not None else None
+    except (TypeError, ValueError):
+        average_value = None
+    if average_value is not None and average_value.is_integer():
+        average_value = int(average_value)
+    return {
+        "province": normalize_province_name(province_value),
+        "cityCount": int(row.get("city_count") or 0),
+        "averageAqi": average_value,
+        "minAqi": int(row["min_aqi"]) if row.get("min_aqi") is not None else None,
+        "maxAqi": int(row["max_aqi"]) if row.get("max_aqi") is not None else None,
+        "createdAt": _format_timestamp(row.get("latest_snapshot")),
+    }
+
+
 def get_all_air_quality(
     limit: int = 1000,
     city: str | None = None,

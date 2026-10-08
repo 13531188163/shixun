@@ -143,3 +143,25 @@ def get_air_quality_statistics() -> dict[str, Any]:
         with connection.cursor() as cursor:
             cursor.execute(sql)
             return cursor.fetchone() or {"record_count": 0, "latest_snapshot": None}
+
+
+def get_province_air_quality_summary(province: str) -> dict[str, Any] | None:
+    """Aggregate numeric AQI snapshots for one province."""
+
+    if province is None or not str(province).strip():
+        raise ValueError("province is required")
+    province_clause, params = _in_clause("province", province_query_values(str(province).strip()))
+    sql = (
+        "SELECT COUNT(DISTINCT city) AS city_count, "
+        "AVG(CAST(TRIM(aqi) AS UNSIGNED)) AS average_aqi, "
+        "MIN(CAST(TRIM(aqi) AS UNSIGNED)) AS min_aqi, "
+        "MAX(CAST(TRIM(aqi) AS UNSIGNED)) AS max_aqi, "
+        "MAX(created_at) AS latest_snapshot "
+        "FROM air_quality_data "
+        f"WHERE {province_clause} AND TRIM(aqi) REGEXP '^[0-9]+$'"
+    )
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            row = cursor.fetchone()
+            return row if row and row.get("city_count") else None

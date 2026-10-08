@@ -135,6 +135,40 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/weather/province-dates:
+    get:
+      tags: [Weather]
+      summary: List available historical dates for a province
+      description: Returns real fixed observation dates available for province-wide aggregation.
+      operationId: listProvinceWeatherDates
+      parameters:
+        - $ref: '#/components/parameters/ProvinceRequired'
+      responses:
+        '200':
+          $ref: '#/components/responses/WeatherDatesSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/weather/province-trend:
+    get:
+      tags: [Weather]
+      summary: Get province-wide historical weather trend
+      description: Returns aggregated historical weather records for a province; this is not a forecast.
+      operationId: getProvinceWeatherTrend
+      parameters:
+        - $ref: '#/components/parameters/ProvinceRequired'
+        - $ref: '#/components/parameters/DateOptional'
+        - $ref: '#/components/parameters/Days'
+      responses:
+        '200':
+          $ref: '#/components/responses/WeatherTrendSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
   /api/weather/city-comparison:
     get:
       tags: [Weather]
@@ -209,6 +243,24 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/DashboardSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/dashboard/province-overview:
+    get:
+      tags: [Dashboard]
+      summary: Get a province-wide dashboard overview
+      description: Returns province-level weather aggregation and a fixed AQI snapshot summary. The AQI snapshot does not change with the weather date.
+      operationId: getProvinceDashboardOverview
+      parameters:
+        - $ref: '#/components/parameters/ProvinceRequired'
+        - $ref: '#/components/parameters/DateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/ProvinceDashboardSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -401,6 +453,24 @@ components:
           format: float
           nullable: true
           example: 0
+    ProvinceWeatherSummary:
+      type: object
+      required: [province, city, district, date, weather, maxTemp, minTemp, avgWind, maxWind, precipitation, scope, cityCount, districtCount, recordCount]
+      properties:
+        province: {type: string}
+        city: {type: string, nullable: true}
+        district: {type: string, nullable: true}
+        date: {type: string, format: date}
+        weather: {type: string, nullable: true}
+        maxTemp: {type: number, nullable: true}
+        minTemp: {type: number, nullable: true}
+        avgWind: {type: number, nullable: true}
+        maxWind: {type: number, nullable: true}
+        precipitation: {type: number, nullable: true}
+        scope: {type: string, enum: [province]}
+        cityCount: {type: integer, minimum: 0}
+        districtCount: {type: integer, minimum: 0}
+        recordCount: {type: integer, minimum: 0}
     WeatherTrend:
       type: object
       required: [date, weather, maxTemp, minTemp, avgWind, maxWind, precipitation]
@@ -536,6 +606,48 @@ components:
               type: string
               pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
               nullable: true
+    ProvinceAirQualitySummary:
+      type: object
+      required: [province, cityCount, averageAqi, minAqi, maxAqi, createdAt]
+      properties:
+        province: {type: string}
+        cityCount: {type: integer, minimum: 0}
+        averageAqi: {type: number, nullable: true}
+        minAqi: {type: integer, nullable: true}
+        maxAqi: {type: integer, nullable: true}
+        createdAt:
+          type: string
+          nullable: true
+          pattern: '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$'
+    ProvinceDashboardOverview:
+      type: object
+      required: [location, latestWeather, latestAirQuality, airQualitySummary, basicStatistics]
+      properties:
+        location:
+          type: object
+          required: [province, city, district, scope]
+          properties:
+            province: {type: string}
+            city: {type: string, nullable: true}
+            district: {type: string, nullable: true}
+            scope: {type: string, enum: [province]}
+        latestWeather:
+          $ref: '#/components/schemas/ProvinceWeatherSummary'
+        latestAirQuality:
+          nullable: true
+          description: Always null for a province selection.
+        airQualitySummary:
+          allOf:
+            - $ref: '#/components/schemas/ProvinceAirQualitySummary'
+          nullable: true
+        basicStatistics:
+          type: object
+          required: [weatherRecordCount, airQualityRecordCount, weatherLatestDate, airQualitySnapshotAt]
+          properties:
+            weatherRecordCount: {type: integer, minimum: 0}
+            airQualityRecordCount: {type: integer, minimum: 0}
+            weatherLatestDate: {type: string, format: date, nullable: true}
+            airQualitySnapshotAt: {type: string, nullable: true}
   responses:
     SuccessResponse:
       description: Successful response. The data shape is defined by the endpoint contract.
@@ -705,6 +817,18 @@ components:
               message: {type: string, example: success}
               data:
                 $ref: '#/components/schemas/DashboardOverview'
+    ProvinceDashboardSuccess:
+      description: Province-wide dashboard overview.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                $ref: '#/components/schemas/ProvinceDashboardOverview'
     BadRequest:
       description: Invalid or missing query parameter.
       content:

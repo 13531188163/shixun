@@ -5,36 +5,37 @@ import { aqiStatusClass, formatDateTime, formatNumber } from '../../utils/format
 
 const props = defineProps({
   airQuality: { type: Object, default: null },
+  airQualitySummary: { type: Object, default: null },
   location: { type: Object, default: null },
   loading: Boolean,
   error: { type: String, default: '' },
 })
 
 const emptyMessage = computed(() => {
-  const city = props.location?.city || '当前城市'
-  return `${city}暂无空气质量快照（AQI 表未覆盖）`
+  const label = props.location?.city || props.location?.province || '当前地区'
+  return `${label}${props.location?.city ? '' : '范围'}暂无空气质量快照（AQI 表未覆盖）`
 })
 
 const gaugeStyle = computed(() => {
-  const value = Number(props.airQuality?.aqi)
+  const value = Number(props.airQuality?.aqi ?? props.airQualitySummary?.averageAqi)
   const percent = Number.isFinite(value) ? Math.min(100, Math.max(0, (value / 300) * 100)) : 0
   return { background: `conic-gradient(var(--accent-cyan) ${percent}%, rgb(17 67 105 / 48%) ${percent}% 100%)` }
 })
 </script>
 
 <template>
-  <ChartState :loading="loading" :error="error" :empty="!props.airQuality" :empty-message="emptyMessage">
+  <ChartState :loading="loading" :error="error" :empty="!props.airQuality && !props.airQualitySummary" :empty-message="emptyMessage">
     <div class="air-quality-overview">
       <div class="aqi-gauge" :style="gaugeStyle">
         <div class="aqi-gauge-inner">
-          <strong>{{ formatNumber(airQuality.aqi) }}</strong>
+          <strong>{{ formatNumber(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
           <span>AQI</span>
         </div>
       </div>
       <div class="aqi-summary">
-        <span class="aqi-city">{{ airQuality.city || '--' }} · {{ airQuality.province || '--' }}</span>
-        <strong :class="aqiStatusClass(airQuality.status)">{{ airQuality.status || '暂无等级' }}</strong>
-        <small>空气质量快照 · {{ formatDateTime(airQuality.createdAt) }}</small>
+        <span class="aqi-city">{{ airQuality?.city || airQualitySummary?.province || '--' }} · {{ airQuality?.province || (airQualitySummary ? '省级平均' : '--') }}</span>
+        <strong :class="aqiStatusClass(airQuality?.status)">{{ airQuality?.status || (airQualitySummary ? '省级平均 AQI' : '暂无等级') }}</strong>
+        <small>空气质量快照 · {{ formatDateTime(airQuality?.createdAt || airQualitySummary?.createdAt) }}</small>
       </div>
     </div>
   </ChartState>

@@ -16,7 +16,7 @@ const props = defineProps({
         <span :class="['weather-symbol', weatherTypeClass(weather.weather)]" aria-hidden="true"><i /></span>
         <div>
           <strong class="weather-name">{{ weather.weather || '--' }}</strong>
-          <p>{{ weather.city || '--' }} · {{ weather.district || '代表区县' }}</p>
+          <p>{{ weather.city || weather.province || '--' }} · {{ weather.district || (weather.scope === 'province' ? '全省聚合' : '代表区县') }}</p>
         </div>
       </div>
       <div class="weather-date">历史最新记录 · {{ formatDateTime(weather.date) }}</div>

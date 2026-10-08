@@ -137,14 +137,17 @@ def get_latest_weather(
 
 
 def get_weather_dates(
-    city: str,
+    city: str | None = None,
     province: str | None = None,
     district: str | None = None,
     limit: int = _MAX_DATE_LIMIT,
 ) -> list[dict[str, Any]]:
     """Return the bounded set of valid historical dates for a location."""
 
-    _require_city(city)
+    if city is None and (province is None or not str(province).strip()):
+        raise ValueError("province or city is required")
+    if city is not None:
+        _require_city(city)
     _validate_date_limit(limit)
     clauses, params = _location_filters(province=province, city=city, district=district)
     clauses.extend([
@@ -241,6 +244,117 @@ def get_weather_history_by_date(
         "WHERE representative_rank = 1 "
         "ORDER BY STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') DESC, id ASC "
         "LIMIT %s"
+    )
+    params.append(days)
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return list(cursor.fetchall())
+
+
+def _numeric_expression(column: str, *, temperature: bool = False) -> str:
+    """Build a fixed-column numeric expression for aggregate-only SQL."""
+
+    cleaned = f"REPLACE(TRIM({column}), '℃', '')" if temperature else f"TRIM({column})"
+    return (
+        f"CASE WHEN {cleaned} REGEXP '^[+-]?[0-9]+(\\.[0-9]+)?$' "
+        f"THEN CAST({cleaned} AS DECIMAL(10, 2)) END"
+    )
+
+
+def get_province_weather_overview(province: str, date: str | None = None) -> dict[str, Any] | None:
+    """Aggregate district observations into a province-wide daily summary."""
+
+    if province is None or not str(province).strip():
+        raise ValueError("province is required")
+    province_values = province_query_values(str(province).strip())
+    province_clause, params = _in_filter("province", province_values)
+    max_temp = _numeric_expression("max_temp", temperature=True)
+    min_temp = _numeric_expression("min_temp", temperature=True)
+    avg_wind = _numeric_expression("avg_wind")
+    max_wind = _numeric_expression("max_wind")
+    precipitation = _numeric_expression("total_precip")
+    date_clause = "date IS NOT NULL AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+    if date is None:
+        sql_date = (
+            "SELECT DATE_FORMAT(MAX(STR_TO_DATE(date, '%%Y-%%m-%%d')), '%%Y-%%m-%%d') AS selected_date "
+            f"FROM weather_data WHERE {province_clause} AND {date_clause}"
+        )
+        with connection_scope() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(sql_date, params)
+                selected_date = (cursor.fetchone() or {}).get("selected_date")
+                if selected_date is None:
+                    return None
+                return _query_province_weather_summary(
+                    cursor, province_clause, province_values, selected_date,
+                    max_temp, min_temp, avg_wind, max_wind, precipitation,
+                )
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            return _query_province_weather_summary(
+                cursor, province_clause, province_values, date,
+                max_temp, min_temp, avg_wind, max_wind, precipitation,
+            )
+
+
+def _query_province_weather_summary(
+    cursor: Any,
+    province_clause: str,
+    province_values: Sequence[str],
+    selected_date: str,
+    max_temp: str,
+    min_temp: str,
+    avg_wind: str,
+    max_wind: str,
+    precipitation: str,
+) -> dict[str, Any] | None:
+    sql = (
+        "SELECT %s AS date, COUNT(*) AS record_count, COUNT(DISTINCT city) AS city_count, "
+        "COUNT(DISTINCT district) AS district_count, "
+        f"MAX({max_temp}) AS max_temp, MIN({min_temp}) AS min_temp, "
+        f"AVG({avg_wind}) AS avg_wind, MAX({max_wind}) AS max_wind, "
+        f"AVG({precipitation}) AS total_precip, "
+        "CASE WHEN COUNT(DISTINCT NULLIF(TRIM(weather), '')) = 1 "
+        "THEN MAX(weather) ELSE '省内多种天气' END AS weather "
+        f"FROM weather_data WHERE {province_clause} AND date = %s"
+    )
+    cursor.execute(sql, [selected_date, *province_values, selected_date])
+    row = cursor.fetchone()
+    return row if row and row.get("record_count") else None
+
+
+def get_province_weather_trend(
+    province: str,
+    *,
+    end_date: str | None = None,
+    days: int = _DEFAULT_HISTORY_LIMIT,
+) -> list[dict[str, Any]]:
+    """Aggregate the last bounded province-wide observation dates."""
+
+    if province is None or not str(province).strip():
+        raise ValueError("province is required")
+    _validate_history_limit(days)
+    province_values = province_query_values(str(province).strip())
+    province_clause, params = _in_filter("province", province_values)
+    max_temp = _numeric_expression("max_temp", temperature=True)
+    min_temp = _numeric_expression("min_temp", temperature=True)
+    avg_wind = _numeric_expression("avg_wind")
+    max_wind = _numeric_expression("max_wind")
+    precipitation = _numeric_expression("total_precip")
+    clauses = [province_clause, "date IS NOT NULL", "date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"]
+    if end_date is not None:
+        clauses.append("STR_TO_DATE(date, '%%Y-%%m-%%d') <= STR_TO_DATE(%s, '%%Y-%%m-%%d')")
+        params.append(end_date)
+    sql = (
+        "SELECT date, COUNT(*) AS record_count, "
+        f"MAX({max_temp}) AS max_temp, MIN({min_temp}) AS min_temp, "
+        f"AVG({avg_wind}) AS avg_wind, MAX({max_wind}) AS max_wind, "
+        f"AVG({precipitation}) AS total_precip, "
+        "CASE WHEN COUNT(DISTINCT NULLIF(TRIM(weather), '')) = 1 "
+        "THEN MAX(weather) ELSE '省内多种天气' END AS weather "
+        f"FROM weather_data WHERE {' AND '.join(clauses)} "
+        "GROUP BY date ORDER BY STR_TO_DATE(date, '%%Y-%%m-%%d') DESC LIMIT %s"
     )
     params.append(days)
     with connection_scope() as connection:

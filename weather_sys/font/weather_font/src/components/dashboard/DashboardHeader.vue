@@ -9,7 +9,9 @@ const props = defineProps({
 
 const locationLabel = computed(() => {
   const location = props.location || {}
-  return [location.province, location.city, location.district].filter(Boolean).join(' · ') || '等待地区数据'
+  const parts = [location.province, location.city, location.district].filter(Boolean)
+  if (location.scope === 'province' && location.province) parts.push('省级汇总')
+  return parts.join(' · ') || '等待地区数据'
 })
 
 const statusClass = computed(() => (

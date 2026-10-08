@@ -83,9 +83,14 @@ def cities_param() -> list[str]:
     return cities
 
 
-def weather_location_params() -> dict[str, str | None]:
+def weather_location_params(*, require_city: bool = True) -> dict[str, str | None]:
+    city = name_param("city", required=require_city)
+    province = name_param("province")
+    district = name_param("district")
+    if not require_city and not city and not province:
+        raise AppException("province or city is required")
     return {
-        "city": name_param("city", required=True),
-        "province": name_param("province"),
-        "district": name_param("district"),
+        "city": city,
+        "province": province,
+        "district": district,
     }

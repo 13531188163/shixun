@@ -3,7 +3,7 @@
 from flask import Blueprint
 
 from ..services import weather_service
-from ..utils.query_params import date_param, cities_param, integer_param, weather_location_params
+from ..utils.query_params import date_param, cities_param, integer_param, name_param, weather_location_params
 from ..utils.response import error_response, success_response
 
 
@@ -30,6 +30,15 @@ def weather_dates():
     return success_response(data=data, meta={"count": len(data)})
 
 
+@weather_bp.get("/province-dates")
+def province_weather_dates():
+    """List fixed observation dates available for province-wide aggregation."""
+
+    province = name_param("province", required=True)
+    data = weather_service.list_weather_dates(province=province)
+    return success_response(data=data, meta={"count": len(data), "scope": "province"})
+
+
 @weather_bp.get("/trend")
 def weather_trend():
     location = weather_location_params()
@@ -42,6 +51,21 @@ def weather_trend():
     if not data and weather_service.get_latest_weather(**location) is None:
         return error_response("location not found", http_status=404)
     return success_response(data=data, meta={"days": days})
+
+
+@weather_bp.get("/province-trend")
+def province_weather_trend():
+    province = name_param("province", required=True)
+    selected_date = date_param()
+    days = integer_param("days", default=7, minimum=1, maximum=90)
+    data = weather_service.get_province_weather_trend(
+        province=province, date=selected_date, days=days
+    )
+    if not data and weather_service.get_province_weather_overview(
+        province=province, date=selected_date
+    ) is None:
+        return error_response("province location not found", http_status=404)
+    return success_response(data=data, meta={"days": days, "scope": "province"})
 
 
 @weather_bp.get("/city-comparison")

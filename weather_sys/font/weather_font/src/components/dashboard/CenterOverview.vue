@@ -7,6 +7,7 @@ const props = defineProps({
   location: { type: Object, default: null },
   weather: { type: Object, default: null },
   airQuality: { type: Object, default: null },
+  airQualitySummary: { type: Object, default: null },
   statistics: { type: Object, default: null },
   detailProvince: { type: String, default: '' },
   loading: Boolean,
@@ -21,13 +22,13 @@ const emit = defineEmits(['province-select', 'map-reset'])
       <div class="area-heading">
         <div>
           <span class="area-kicker">FIXED DATA DATE</span>
-          <h3>{{ location?.province || '--' }} · {{ location?.city || '--' }}</h3>
-          <p>{{ location?.district || '稳定代表区县' }} · {{ weather?.date || '固定日期数据' }}</p>
+          <h3>{{ location?.province || '--' }} · {{ location?.city || '省级汇总' }}</h3>
+          <p>{{ location?.district || (location?.scope === 'province' ? '全省聚合' : '稳定代表区县') }} · {{ weather?.date || '固定日期数据' }}</p>
         </div>
         <div class="center-aqi">
           <span>AQI</span>
-          <strong>{{ formatNumber(airQuality?.aqi) }}</strong>
-          <small>{{ airQuality?.status || '暂无等级' }}</small>
+          <strong>{{ formatNumber(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
+          <small>{{ airQuality?.status || (airQualitySummary ? '省级平均 AQI' : '暂无等级') }}</small>
         </div>
       </div>
 
@@ -58,7 +59,7 @@ const emit = defineEmits(['province-select', 'map-reset'])
         <div><span>天气最新日期</span><b>{{ formatDateTime(weather?.date) }}</b></div>
         <div><span>温度区间</span><b>{{ formatTemperature(weather?.minTemp) }} — {{ formatTemperature(weather?.maxTemp) }}</b></div>
         <div><span>天气记录</span><b>{{ formatNumber(statistics?.weatherRecordCount) }}</b></div>
-        <div><span>AQI 快照</span><b>{{ formatDateTime(airQuality?.createdAt) }}</b></div>
+        <div><span>AQI 快照</span><b>{{ formatDateTime(airQuality?.createdAt || airQualitySummary?.createdAt) }}</b></div>
       </div>
     </div>
   </ChartState>

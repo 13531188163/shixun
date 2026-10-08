@@ -305,7 +305,22 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：地图选中后的城市、区县和数据日期选择器。
 - 数据可用状态：available。
 
-### 5.3 获取天气趋势
+### 5.3 获取省级固定日期
+
+- 接口名称：获取省级天气历史日期
+- Method：GET
+- URL：/api/weather/province-dates
+- 业务用途：地图点击省份后，提供该省整体天气汇总可用的真实观测日期。
+- Query 参数：province。
+- 参数类型：string。
+- 是否必填：province 是。
+- 数据来源表：weather_data。
+- 数据计算方式：按省份过滤，校验日期字符串格式后去重，按观测日期倒序返回，最多返回 1000 个日期；省级日期用于省内记录聚合，不代表实时数据。
+- HTTP Status：200、400、500。
+- 前端对应模块：省级地图选中后的固定日期选择器。
+- 数据可用状态：available。
+
+### 5.4 获取天气趋势
 
 - 接口名称：获取天气趋势
 - Method：GET
@@ -352,7 +367,24 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：天气趋势图、历史风速/降水图。
 - 数据可用状态：available（历史趋势，不是预报）。
 
-### 5.4 城市天气比较
+### 5.5 获取省级天气趋势
+
+- 接口名称：获取省级天气趋势
+- Method：GET
+- URL：/api/weather/province-trend
+- 业务用途：返回选中省份整体的历史天气聚合趋势。
+- Query 参数：province、days、date。
+- 参数类型：string、integer、date。
+- 是否必填：province 是；days 否；date 否。
+- 默认值：days=7；date 缺省以该省数据库最新日期为结束日期。
+- 参数约束：days 为 1-90 整数；province 长度 1-50；date 为 YYYY-MM-DD。
+- 数据来源表：weather_data。
+- 数据计算方式：按省份和日期分组，最高温取 MAX，最低温取 MIN，平均风速和降水取 AVG，最大风速取 MAX；按解析后的 date 取截至 date 的最近 days 个观测日并升序返回。无法解析的数值不参与聚合。
+- HTTP Status：200、400、404、500。
+- 前端对应模块：省级范围历史天气趋势图。
+- 数据可用状态：available（历史趋势，不是预报）。
+
+### 5.6 城市天气比较
 
 - 接口名称：城市天气比较
 - Method：GET
@@ -607,6 +639,24 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - HTTP Status：200、400、404、500。
 - 前端对应模块：Dashboard 首屏聚合；趋势、排名和分布仍调用独立接口。
 - 数据可用状态：partial。天气、AQI、基础数量可用；湿度、污染物、预警和健康建议不可用。
+
+### 7.2 省级 Dashboard 概览
+
+- 接口名称：省级 Dashboard 概览
+- Method：GET
+- URL：/api/dashboard/province-overview
+- 业务用途：地图点击省份后返回该省整体天气聚合、固定日期和省级空气质量快照摘要。
+- Query 参数：province、date。
+- 参数类型：string、date。
+- 是否必填：province 是；date 否。
+- 默认值：date 缺省使用该省天气数据的最新观测日期。
+- 参数约束：province 长度 1-50；date 为 YYYY-MM-DD；date 只能固定该省实际存在的天气观测日。
+- 数据来源表：weather_data、air_quality_data。
+- 数据计算方式：weather_data 按省份和选定日期聚合，最高温取 MAX，最低温取 MIN，平均风速和降水取 AVG，最大风速取 MAX；air_quality_data 按省份聚合可解析 AQI，返回城市数、平均 AQI、最小/最大 AQI 和快照时间。空气快照表没有天气观测日期，因此不会随 date 变化。
+- 成功数据结构：location 的 city、district 为 null，scope 为 province；latestWeather 为省级聚合天气；latestAirQuality 为 null；airQualitySummary 为空或包含 province、cityCount、averageAqi、minAqi、maxAqi、createdAt；basicStatistics 沿用 Dashboard 概览基础统计。
+- HTTP Status：200、400、404、500。
+- 前端对应模块：全国地图省级点击后的中心概览、天气指标和省级趋势。
+- 数据可用状态：partial。省级天气聚合和可用 AQI 摘要可用；污染物、预警和健康建议不可用。
 
 ## 8. 当前不提供的指标
 

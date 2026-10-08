@@ -3,8 +3,14 @@ import { computed, onMounted, reactive, ref } from 'vue'
 
 import { getHealth } from '../api/health'
 import { getProvinces, getCities, getDistricts } from '../api/location'
-import { getDashboardOverview } from '../api/dashboard'
-import { getWeatherDates, getWeatherTrend, getCityWeatherComparison } from '../api/weather'
+import { getDashboardOverview, getProvinceDashboardOverview } from '../api/dashboard'
+import {
+  getWeatherDates,
+  getProvinceWeatherDates,
+  getWeatherTrend,
+  getProvinceWeatherTrend,
+  getCityWeatherComparison,
+} from '../api/weather'
 import { getAirQualityRanking, getAirQualityDistribution } from '../api/airQuality'
 import DashboardHeader from '../components/dashboard/DashboardHeader.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
@@ -21,7 +27,7 @@ const provinces = ref([])
 const cities = ref([])
 const districts = ref([])
 const availableDates = ref([])
-const selection = reactive({ province: '', city: '', district: '' })
+const selection = reactive({ province: '', city: '', district: '', scope: 'province' })
 const selectedDate = ref('')
 const mapDetailProvince = ref('')
 const health = ref(null)
@@ -55,7 +61,8 @@ let sharedAirQualityPromise
 const loading = computed(() => locationLoading.value || payloadLoading.value)
 const basicStatistics = computed(() => dashboard.value?.basicStatistics || null)
 const cityComparisonDisplay = computed(() => cityComparison.value.slice(0, 6))
-const locationReady = computed(() => Boolean(selection.province && selection.city))
+const locationReady = computed(() => Boolean(selection.province))
+const isProvinceScope = computed(() => selection.scope === 'province' || !selection.city)
 const dataDate = computed(() => selectedDate.value || latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
 const apiStatus = computed(() => {
   if (pageError.value) return '需要检查 API'
@@ -79,6 +86,7 @@ function errorText(error, fallback) {
 
 function buildLocationParams() {
   const params = { province: selection.province, city: selection.city }
+  if (!selection.city) return { province: selection.province }
   if (selection.district) params.district = selection.district
   return params
 }
@@ -133,25 +141,41 @@ async function ensureSharedAirQuality() {
 }
 
 async function loadSelectedData(version) {
-  if (!selection.city || version !== requestVersion) return
+  if (!selection.province || version !== requestVersion) return
 
   payloadLoading.value = true
   const params = buildLocationParams()
   const overviewParams = selectedDate.value ? { ...params, date: selectedDate.value } : params
-  let comparisonCities
-  try {
-    comparisonCities = await comparisonCitiesFor(selection.city)
-  } catch {
-    comparisonCities = [selection.city]
+  const dateParams = selectedDate.value ? { date: selectedDate.value } : {}
+  const provinceScope = isProvinceScope.value
+  let comparisonCities = []
+  if (provinceScope) {
+    comparisonCities = cities.value.slice(0, 10)
+  } else {
+    try {
+      comparisonCities = await comparisonCitiesFor(selection.city)
+    } catch {
+      comparisonCities = [selection.city]
+    }
   }
   if (version !== requestVersion) return
 
-  const dateParams = selectedDate.value ? { date: selectedDate.value } : {}
+  const requestsToMake = provinceScope
+    ? [
+        getProvinceDashboardOverview(overviewParams),
+        getProvinceWeatherTrend({ province: selection.province, ...dateParams, days: 7 }),
+        comparisonCities.length
+          ? getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams })
+          : Promise.resolve({ data: [] }),
+      ]
+    : [
+        getDashboardOverview(overviewParams),
+        getWeatherTrend({ ...params, ...dateParams, days: 7 }),
+        getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams }),
+      ]
   const [requests] = await Promise.all([
     Promise.allSettled([
-      getDashboardOverview(overviewParams),
-      getWeatherTrend({ ...params, ...dateParams, days: 7 }),
-      getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams }),
+      ...requestsToMake,
     ]),
     ensureSharedAirQuality(),
   ])
@@ -176,9 +200,11 @@ async function loadSelectedData(version) {
 }
 
 async function loadAvailableDates(version) {
-  if (!selection.province || !selection.city || version !== requestVersion) return
+  if (!selection.province || version !== requestVersion) return
   try {
-    const response = await getWeatherDates(buildLocationParams())
+    const response = isProvinceScope.value
+      ? await getProvinceWeatherDates({ province: selection.province })
+      : await getWeatherDates(buildLocationParams())
     if (version !== requestVersion) return
     availableDates.value = Array.isArray(response.data) ? response.data : []
     if (!availableDates.value.includes(selectedDate.value)) {
@@ -198,7 +224,7 @@ async function loadDistrictsAndData(version) {
     const response = await getDistricts({ province: selection.province, city: selection.city })
     if (version !== requestVersion) return
     districts.value = Array.isArray(response.data) ? response.data : []
-    if (!districts.value.includes(selection.district)) selection.district = districts.value[0] || ''
+    if (!districts.value.includes(selection.district)) selection.district = ''
   } catch (error) {
     if (version !== requestVersion) return
     districts.value = []
@@ -215,10 +241,12 @@ async function handleProvinceChange(province) {
   selection.province = province
   selection.city = ''
   selection.district = ''
+  selection.scope = 'province'
   selectedDate.value = ''
   cities.value = []
   districts.value = []
   availableDates.value = []
+  comparisonPoolPromise = undefined
   clearData()
   pageError.value = ''
   if (!province) {
@@ -235,11 +263,9 @@ async function handleProvinceChange(province) {
     cities.value = Array.isArray(response.data) ? response.data : []
     if (!cities.value.length) {
       pageError.value = '该省份暂无城市数据'
-      payloadLoading.value = false
-      return
     }
-    selection.city = cities.value[0]
-    await loadDistrictsAndData(version)
+    await loadAvailableDates(version)
+    await loadSelectedData(version)
   } catch (error) {
     if (version === requestVersion) pageError.value = errorText(error, '城市列表读取失败')
   } finally {
@@ -285,14 +311,24 @@ async function handleCityChange(city) {
   const version = ++requestVersion
   selection.city = city
   selection.district = ''
+  selection.scope = city ? 'city' : 'province'
   selectedDate.value = ''
   districts.value = []
   availableDates.value = []
   clearData()
   pageError.value = ''
   if (!city) {
-    locationLoading.value = false
-    payloadLoading.value = false
+    locationLoading.value = true
+    payloadLoading.value = true
+    try {
+      await loadAvailableDates(version)
+      await loadSelectedData(version)
+    } finally {
+      if (version === requestVersion) {
+        locationLoading.value = false
+        payloadLoading.value = false
+      }
+    }
     return
   }
   locationLoading.value = true
@@ -366,12 +402,12 @@ onMounted(loadInitial)
       <div class="dashboard-toolbar">
         <div class="map-interaction-hint">
           <span class="selector-label">全国地图</span>
-          <span>点击省份进入省级详细地图，再选择城市、区县和日期</span>
+          <span>点击省份查看省级汇总，再按需选择城市、区县和固定日期</span>
           <span v-if="dataDate" class="fixed-date">固定数据日期：{{ dataDate }}</span>
         </div>
         <div class="toolbar-summary">
           <span :class="['api-status', { offline: pageError || healthError }]" aria-live="polite"><i />{{ apiStatus }}</span>
-          <span v-if="locationReady">{{ selection.province }} / {{ selection.city }}<template v-if="selection.district"> / {{ selection.district }}</template></span>
+          <span v-if="locationReady">{{ selection.province }}<template v-if="selection.city"> / {{ selection.city }}</template><template v-else> / 省级汇总</template><template v-if="selection.district"> / {{ selection.district }}</template></span>
         </div>
       </div>
 
@@ -380,12 +416,13 @@ onMounted(loadInitial)
         <label>
           <span>城市</span>
           <select :value="selection.city" :disabled="loading" @change="handleCityChange($event.target.value)">
+            <option value="">省级汇总（选择城市后下钻）</option>
             <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
           </select>
         </label>
         <label>
           <span>区县</span>
-          <select :value="selection.district" :disabled="loading || !districts.length" @change="handleDistrictChange($event.target.value)">
+          <select :value="selection.district" :disabled="loading || !selection.city || !districts.length" @change="handleDistrictChange($event.target.value)">
             <option value="">全市代表记录</option>
             <option v-for="district in districts" :key="district" :value="district">{{ district }}</option>
           </select>
@@ -407,7 +444,13 @@ onMounted(loadInitial)
             <WeatherOverview :weather="latestWeather" :loading="loading" :error="errors.weather" />
           </DashboardPanel>
           <DashboardPanel title="天气指标" subtitle="仅展示数据库支持的天气字段">
-            <WeatherMetrics :weather="latestWeather" :air-quality="latestAirQuality" :loading="loading" :error="errors.weather" />
+            <WeatherMetrics
+              :weather="latestWeather"
+              :air-quality="latestAirQuality"
+              :air-quality-summary="dashboard?.airQualitySummary"
+              :loading="loading"
+              :error="errors.weather"
+            />
           </DashboardPanel>
           <DashboardPanel title="主要城市温度比较" subtitle="city-comparison · 所选日期实际返回城市">
             <CityComparisonChart :data="cityComparisonDisplay" :loading="loading" :error="errors.comparison" />
@@ -418,11 +461,12 @@ onMounted(loadInitial)
         </section>
 
         <section class="dashboard-column center-column" aria-label="区域数据概览">
-          <DashboardPanel title="区域数据概览" subtitle="dashboard/overview · 真实 API 聚合">
+          <DashboardPanel title="区域数据概览" subtitle="dashboard/overview · 省级或城市真实 API 聚合">
             <CenterOverview
               :location="dashboard?.location"
               :weather="latestWeather"
               :air-quality="latestAirQuality"
+              :air-quality-summary="dashboard?.airQualitySummary"
               :statistics="basicStatistics"
               :detail-province="mapDetailProvince"
               :loading="loading"
@@ -437,6 +481,7 @@ onMounted(loadInitial)
           <DashboardPanel title="空气质量概况" subtitle="air-quality/latest · 固定快照，不随天气日期变化">
             <AirQualityOverview
               :air-quality="latestAirQuality"
+              :air-quality-summary="dashboard?.airQualitySummary"
               :location="selection"
               :loading="loading"
               :error="errors.airQuality"
