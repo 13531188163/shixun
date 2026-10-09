@@ -29,7 +29,6 @@ const districts = ref([])
 const availableDates = ref([])
 const selection = reactive({ province: '', city: '', district: '', scope: 'province' })
 const selectedDate = ref('')
-const mapDetailProvince = ref('')
 const health = ref(null)
 const healthError = ref('')
 
@@ -276,35 +275,76 @@ async function handleProvinceChange(province) {
   }
 }
 
-function mapProvinceToApiName(mapProvince) {
-  const value = String(mapProvince || '').trim()
-  if (!value) return ''
-  const direct = provinces.value.find((province) => province === value)
-  if (direct) return direct
-  const trimSuffix = (name) => String(name || '').replace(/省|市|自治区|特别行政区$/u, '')
-  const normalized = trimSuffix(value)
-  return provinces.value.find((province) => {
-    const candidate = trimSuffix(province)
-    return value.startsWith(province)
-      || province.startsWith(value)
-      || normalized === candidate
-      || normalized.startsWith(candidate)
-      || candidate.startsWith(normalized)
-  }) || value
+const MUNICIPALITY_AD_CODES = new Set(['110000', '120000', '310000', '500000'])
+
+function locationNameVariants(value, kind) {
+  const text = String(value || '').trim()
+  if (!text) return []
+  const suffixes = kind === 'province'
+    ? ['特别行政区', '自治区', '省', '市']
+    : kind === 'city'
+      ? ['特别行政区', '自治区', '自治州', '地区', '盟', '市']
+      : ['特别行政区', '自治区', '自治州', '地区', '盟', '区', '县', '旗', '市']
+  const variants = [text]
+  suffixes.forEach((suffix) => {
+    if (text.endsWith(suffix) && text.length > suffix.length) variants.push(text.slice(0, -suffix.length))
+  })
+  return [...new Set(variants)]
 }
 
-async function handleMapProvinceSelect(mapProvince) {
-  const province = mapProvinceToApiName(mapProvince)
-  if (!provinces.value.includes(province)) {
-    pageError.value = `地图省份“${mapProvince}”暂无可查询记录`
+function resolveLocationName(mapName, options, kind) {
+  const variants = locationNameVariants(mapName, kind)
+  if (!variants.length) return ''
+  const exact = options.find((option) => variants.includes(option))
+  if (exact) return exact
+  const normalized = new Set(variants.map((item) => locationNameVariants(item, kind).at(-1)))
+  return options.find((option) => normalized.has(locationNameVariants(option, kind).at(-1))) || ''
+}
+
+function provinceMapNode(area) {
+  return area?.path?.find((item) => item.level === 'province') || null
+}
+
+function municipalityArea(area) {
+  const provinceNode = provinceMapNode(area)
+  return MUNICIPALITY_AD_CODES.has(String(provinceNode?.adcode || ''))
+}
+
+function mapProvinceToApiName(mapProvince) {
+  return resolveLocationName(mapProvince, provinces.value, 'province') || String(mapProvince || '').trim()
+}
+
+async function handleMapAreaSelect(area) {
+  const province = mapProvinceToApiName(area?.province || provinceMapNode(area)?.name)
+  if (!province || !provinces.value.includes(province)) {
+    pageError.value = `地图区域“${area?.name || '--'}”暂无可查询的省份记录`
     return
   }
-  mapDetailProvince.value = province
-  await handleProvinceChange(province)
-}
 
-function handleMapReset() {
-  mapDetailProvince.value = ''
+  // 地图资源与后端位置列表独立加载；点击很快时先确保城市列表已经就绪。
+  if (selection.province !== province || !cities.value.length) {
+    await handleProvinceChange(province)
+  }
+  if (area?.level === 'province') return
+
+  const cityMapName = area?.city || (municipalityArea(area) ? province : area?.name)
+  const city = resolveLocationName(cityMapName, cities.value, 'city')
+  if (!city) {
+    pageError.value = `地图区域“${cityMapName || area?.name || '--'}”在数据库中暂无城市记录`
+    return
+  }
+
+  if (selection.city !== city || !districts.value.length || area?.level === 'city') {
+    await handleCityChange(city)
+  }
+  if (area?.level !== 'district') return
+
+  const district = resolveLocationName(area.district || area.name, districts.value, 'district')
+  if (!district) {
+    pageError.value = `区县“${area?.name || '--'}”在数据库中暂无天气记录`
+    return
+  }
+  await handleDistrictChange(district)
 }
 
 async function handleCityChange(city) {
@@ -468,11 +508,9 @@ onMounted(loadInitial)
               :air-quality="latestAirQuality"
               :air-quality-summary="dashboard?.airQualitySummary"
               :statistics="basicStatistics"
-              :detail-province="mapDetailProvince"
               :loading="loading"
               :error="errors.overview"
-              @province-select="handleMapProvinceSelect"
-              @map-reset="handleMapReset"
+              @area-select="handleMapAreaSelect"
             />
           </DashboardPanel>
         </section>

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:map": "node --test tests/administrativeMap.test.js"
   },
   "dependencies": {
     "axios": "^1.7.9",

@@ -9,15 +9,15 @@ const props = defineProps({
   airQuality: { type: Object, default: null },
   airQualitySummary: { type: Object, default: null },
   statistics: { type: Object, default: null },
-  detailProvince: { type: String, default: '' },
   loading: Boolean,
   error: { type: String, default: '' },
 })
-const emit = defineEmits(['province-select', 'map-reset'])
+const emit = defineEmits(['area-select'])
 </script>
 
 <template>
-  <ChartState :loading="loading" :error="error" :empty="!props.location && !props.weather && !props.airQuality">
+  <!-- 地图边界是独立的真实资源；后端数据加载时保留地图，避免整块面板闪烁。 -->
+  <ChartState :loading="false" error="" :empty="false">
     <div class="center-overview">
       <div class="area-heading">
         <div>
@@ -37,17 +37,10 @@ const emit = defineEmits(['province-select', 'map-reset'])
           :location="location"
           :weather="weather"
           :air-quality="airQuality"
-          :detail-province="detailProvince"
           :loading="loading"
           :error="error"
-          @province-select="emit('province-select', $event)"
+          @area-select="emit('area-select', $event)"
         />
-        <button
-          v-if="detailProvince"
-          type="button"
-          class="map-reset"
-          @click="emit('map-reset')"
-        >返回全国</button>
         <div class="map-weather-badge">
           <span>{{ weather?.weather || '--' }}</span>
           <strong>{{ formatTemperature(weather?.maxTemp) }}</strong>
@@ -152,25 +145,6 @@ h3 {
   border: 1px solid rgb(50 201 238 / 56%);
   border-radius: 5px;
   box-shadow: 0 0 20px rgb(32 201 255 / 22%);
-}
-
-.map-reset {
-  position: absolute;
-  top: 13px;
-  right: 14px;
-  z-index: 2;
-  padding: 5px 9px;
-  color: var(--text-secondary);
-  font: 11px/1.2 inherit;
-  background: rgb(4 31 64 / 86%);
-  border: 1px solid rgb(64 193 236 / 58%);
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.map-reset:hover {
-  color: var(--text-primary);
-  border-color: var(--accent-cyan);
 }
 
 .map-weather-badge strong {
