@@ -120,6 +120,7 @@ h3 {
 .data-map {
   position: relative;
   display: grid;
+  min-width: 0;
   min-height: 0;
   flex: 1;
   overflow: hidden;
@@ -131,7 +132,7 @@ h3 {
 .map-weather-badge {
   position: absolute;
   right: 17px;
-  bottom: 42px;
+  top: 102px;
   display: grid;
   min-width: 88px;
   padding: 8px 10px;

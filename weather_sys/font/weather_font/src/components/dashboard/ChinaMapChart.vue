@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import * as echarts from 'echarts'
 import { useEChart } from '../../utils/chart'
 import { DARK_TOOLTIP } from '../../utils/chartTheme'
+import RegionCarousel from './RegionCarousel.vue'
 import {
   NATIONAL_ADCODE,
   featureAdcode,
@@ -161,14 +162,24 @@ function mapNavigationBase() {
   return index >= 0 ? navigation.value.slice(0, index + 1) : navigation.value
 }
 
-async function handleMapClick(params) {
-  const feature = findFeature(params)
-  if (!feature) return
+function featureSelection(feature) {
   const node = nodeFromFeature(feature)
-  if (!node.adcode || !node.name) return
-  const path = [...mapNavigationBase(), node]
-  selectedAdcode.value = node.adcode
-  emitAreaSelection(node, path)
+  if (!node.adcode || !node.name) return null
+  return { node, path: [...mapNavigationBase(), node] }
+}
+
+function selectFeature(feature) {
+  const selection = featureSelection(feature)
+  if (!selection) return null
+  selectedAdcode.value = selection.node.adcode
+  emitAreaSelection(selection.node, selection.path)
+  return selection
+}
+
+async function enterFeature(feature) {
+  const selection = selectFeature(feature)
+  if (!selection) return
+  const { node, path } = selection
   if (isTerminalFeature(feature)) {
     navigation.value = path
     terminalMessage.value = node.level === 'district'
@@ -177,7 +188,23 @@ async function handleMapClick(params) {
     emitNavigation()
     return
   }
+  if (mapLoading.value) return
   await loadMapAt(node, path)
+}
+
+function handleCarouselSelect(feature) {
+  selectFeature(feature)
+}
+
+async function handleCarouselEnter(feature) {
+  if (mapLoading.value) return
+  await enterFeature(feature)
+}
+
+async function handleMapClick(params) {
+  const feature = findFeature(params)
+  if (!feature) return
+  await enterFeature(feature)
 }
 
 async function navigateTo(index) {
@@ -377,12 +404,21 @@ useEChart(chartElement, buildOption, [
       </div>
       <div v-if="terminalMessage && !mapError" class="map-terminal-note">{{ terminalMessage }}</div>
     </div>
+    <RegionCarousel
+      :features="currentFeatures"
+      :selected-adcode="effectiveSelectedAdcode"
+      :parent-name="currentNode?.name || '全国'"
+      :level-label="currentLevelLabel"
+      :loading="mapLoading"
+      @select="handleCarouselSelect"
+      @enter="handleCarouselEnter"
+    />
     <p class="map-source">边界数据：DataV GeoAtlas · adcode · 按需加载并缓存；天气与空气质量仍来自后端数据库</p>
   </div>
 </template>
 
 <style scoped>
-.map-shell { display: flex; min-height: 0; height: 100%; flex: 1; flex-direction: column; gap: 6px; }
+.map-shell { display: flex; min-width: 0; min-height: 0; width: 100%; height: 100%; flex: 1; flex-direction: column; gap: 6px; }
 .map-breadcrumb { display: flex; min-height: 26px; align-items: center; flex-wrap: wrap; gap: 4px; padding: 1px 8px; color: var(--text-muted); font-size: 10px; background: rgb(4 31 64 / 68%); border: 1px solid rgb(45 151 216 / 34%); border-radius: 4px; }
 .breadcrumb-label { margin-right: 3px; color: var(--accent-cyan); font-weight: 700; letter-spacing: 0.08em; }
 .breadcrumb-separator { color: rgb(127 187 214 / 62%); }
