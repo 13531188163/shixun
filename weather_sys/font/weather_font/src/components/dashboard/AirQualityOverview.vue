@@ -16,6 +16,13 @@ const emptyMessage = computed(() => {
   return `${label}${props.location?.city ? '' : '范围'}暂无空气质量快照（AQI 表未覆盖）`
 })
 
+const snapshotLabel = computed(() => {
+  if (!props.airQuality && !props.airQualitySummary) return '暂无空气质量快照'
+  if (props.location?.district && props.airQuality) return '城市 AQI 快照（区县未单独覆盖）'
+  if (props.airQualitySummary && !props.airQuality) return '省级 AQI 快照汇总'
+  return '空气质量快照'
+})
+
 const gaugeStyle = computed(() => {
   const value = Number(props.airQuality?.aqi ?? props.airQualitySummary?.averageAqi)
   const percent = Number.isFinite(value) ? Math.min(100, Math.max(0, (value / 300) * 100)) : 0
@@ -35,7 +42,7 @@ const gaugeStyle = computed(() => {
       <div class="aqi-summary">
         <span class="aqi-city">{{ airQuality?.city || airQualitySummary?.province || '--' }} · {{ airQuality?.province || (airQualitySummary ? '省级平均' : '--') }}</span>
         <strong :class="aqiStatusClass(airQuality?.status)">{{ airQuality?.status || (airQualitySummary ? '省级平均 AQI' : '暂无等级') }}</strong>
-        <small>空气质量快照 · {{ formatDateTime(airQuality?.createdAt || airQualitySummary?.createdAt) }}</small>
+        <small>{{ snapshotLabel }} · {{ formatDateTime(airQuality?.createdAt || airQualitySummary?.createdAt) }}</small>
       </div>
     </div>
   </ChartState>

@@ -52,9 +52,10 @@ class WeatherRouteTests(unittest.TestCase):
         return_value={"data": [{"city": "北京"}], "meta": {"requested": 1, "returned": 1}},
     )
     def test_city_comparison_success(self, service):
-        response = self.client.get("/api/weather/city-comparison?cities=北京")
+        response = self.client.get("/api/weather/city-comparison?cities=北京&province=北京")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["meta"]["returned"], 1)
+        service.assert_called_once_with(["北京"], province="北京")
 
     def test_city_comparison_invalid_cities(self):
         self.assertEqual(self.client.get("/api/weather/city-comparison?cities=").status_code, 400)

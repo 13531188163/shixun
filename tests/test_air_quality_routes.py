@@ -15,9 +15,10 @@ class AirQualityRouteTests(unittest.TestCase):
         return_value={"city": "北京", "aqi": 105},
     )
     def test_latest_success(self, service):
-        response = self.client.get("/api/air-quality/latest?city=北京")
+        response = self.client.get("/api/air-quality/latest?city=北京&province=北京")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["data"]["aqi"], 105)
+        service.assert_called_once_with(city="北京", province="北京")
 
     def test_latest_requires_city(self):
         self.assertEqual(self.client.get("/api/air-quality/latest").status_code, 400)

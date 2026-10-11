@@ -54,6 +54,9 @@ const errors = reactive({
 })
 
 let requestVersion = 0
+// 地图点击会跨越省/市/区县多次 await；独立令牌防止旧点击在新点击之后
+// 继续解析名称并覆盖当前面板。
+let mapInteractionVersion = 0
 let comparisonPoolPromise
 let sharedAirQualityPromise
 
@@ -104,14 +107,9 @@ function clearData() {
 }
 
 async function comparisonCitiesFor(selectedCity) {
-  if (!comparisonPoolPromise) {
-    const sampleProvinces = provinces.value.slice(0, 8).filter((province) => province !== selection.province)
-    comparisonPoolPromise = Promise.allSettled(
-      sampleProvinces.map((province) => getCities({ province })),
-    ).then((results) => results.flatMap((result) => (
-      result.status === 'fulfilled' && Array.isArray(result.value.data) ? result.value.data : []
-    )))
-  }
+  // 同一张图中的比较城市必须来自当前省份，避免同名城市被数据库中
+  // 其他省份的记录抢先匹配。城市列表已经在省份切换时加载过，直接复用。
+  if (!comparisonPoolPromise) comparisonPoolPromise = Promise.resolve(cities.value)
   const pool = await comparisonPoolPromise
   return [...new Set([selectedCity, ...pool].filter(Boolean))].slice(0, 10)
 }
@@ -161,16 +159,16 @@ async function loadSelectedData(version) {
 
   const requestsToMake = provinceScope
     ? [
-        getProvinceDashboardOverview(overviewParams),
-        getProvinceWeatherTrend({ province: selection.province, ...dateParams, days: 7 }),
-        comparisonCities.length
-          ? getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams })
+          getProvinceDashboardOverview(overviewParams),
+          getProvinceWeatherTrend({ province: selection.province, ...dateParams, days: 7 }),
+          comparisonCities.length
+          ? getCityWeatherComparison({ province: selection.province, cities: comparisonCities.join(','), ...dateParams })
           : Promise.resolve({ data: [] }),
       ]
     : [
         getDashboardOverview(overviewParams),
         getWeatherTrend({ ...params, ...dateParams, days: 7 }),
-        getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams }),
+        getCityWeatherComparison({ province: selection.province, cities: comparisonCities.join(','), ...dateParams }),
       ]
   const [requests] = await Promise.all([
     Promise.allSettled([
@@ -235,7 +233,8 @@ async function loadDistrictsAndData(version) {
   await loadSelectedData(version)
 }
 
-async function handleProvinceChange(province) {
+async function handleProvinceChange(province, mapToken = null) {
+  if (mapToken === null) mapInteractionVersion += 1
   const version = ++requestVersion
   selection.province = province
   selection.city = ''
@@ -314,40 +313,69 @@ function mapProvinceToApiName(mapProvince) {
   return resolveLocationName(mapProvince, provinces.value, 'province') || String(mapProvince || '').trim()
 }
 
+function showMapOnlyArea(area, province, message) {
+  requestVersion += 1
+  const path = Array.isArray(area?.path) ? area.path : []
+  const provinceNode = path.find((item) => item.level === 'province')
+  const cityNode = [...path].reverse().find((item) => item.level === 'city')
+  const displayProvince = province || provinceNode?.name || area?.province || ''
+  const displayCity = cityNode?.name || (area?.level === 'city' ? area.name : '')
+  selection.province = displayProvince
+  selection.city = displayCity
+  selection.district = area?.level === 'district' ? area.name : ''
+  selection.scope = displayCity ? 'city' : 'province'
+  cities.value = []
+  districts.value = []
+  availableDates.value = []
+  selectedDate.value = ''
+  clearData()
+  locationLoading.value = false
+  payloadLoading.value = false
+  pageError.value = message || `地图区域“${area?.name || '--'}”暂无数据库天气覆盖，面板显示暂无数据`
+}
+
 async function handleMapAreaSelect(area) {
+  const mapToken = ++mapInteractionVersion
   const province = mapProvinceToApiName(area?.province || provinceMapNode(area)?.name)
   if (!province || !provinces.value.includes(province)) {
-    pageError.value = `地图区域“${area?.name || '--'}”暂无可查询的省份记录`
+    showMapOnlyArea(
+      area,
+      province || area?.province || provinceMapNode(area)?.name || '',
+      `地图区域“${area?.name || '--'}”暂无数据库天气/AQI覆盖，地图仍可继续下钻，数据面板显示暂无数据`,
+    )
     return
   }
 
   // 地图资源与后端位置列表独立加载；点击很快时先确保城市列表已经就绪。
   if (selection.province !== province || !cities.value.length) {
-    await handleProvinceChange(province)
+    await handleProvinceChange(province, mapToken)
   }
+  if (mapToken !== mapInteractionVersion) return
   if (area?.level === 'province') return
 
   const cityMapName = area?.city || (municipalityArea(area) ? province : area?.name)
   const city = resolveLocationName(cityMapName, cities.value, 'city')
   if (!city) {
-    pageError.value = `地图区域“${cityMapName || area?.name || '--'}”在数据库中暂无城市记录`
+    showMapOnlyArea(area, province, `地图区域“${cityMapName || area?.name || '--'}”在数据库中暂无天气城市记录，数据面板显示暂无数据`)
     return
   }
 
   if (selection.city !== city || !districts.value.length || area?.level === 'city') {
-    await handleCityChange(city)
+    await handleCityChange(city, mapToken)
   }
+  if (mapToken !== mapInteractionVersion) return
   if (area?.level !== 'district') return
 
   const district = resolveLocationName(area.district || area.name, districts.value, 'district')
   if (!district) {
-    pageError.value = `区县“${area?.name || '--'}”在数据库中暂无天气记录`
+    showMapOnlyArea(area, province, `区县“${area?.name || '--'}”在数据库中暂无天气记录，数据面板显示暂无数据`)
     return
   }
-  await handleDistrictChange(district)
+  await handleDistrictChange(district, mapToken)
 }
 
-async function handleCityChange(city) {
+async function handleCityChange(city, mapToken = null) {
+  if (mapToken === null) mapInteractionVersion += 1
   const version = ++requestVersion
   selection.city = city
   selection.district = ''
@@ -385,7 +413,8 @@ async function handleCityChange(city) {
   }
 }
 
-async function handleDistrictChange(district) {
+async function handleDistrictChange(district, mapToken = null) {
+  if (mapToken === null) mapInteractionVersion += 1
   const version = ++requestVersion
   selection.district = district
   selectedDate.value = ''
@@ -405,6 +434,7 @@ async function handleDistrictChange(district) {
 }
 
 async function handleDateChange(date) {
+  mapInteractionVersion += 1
   const version = ++requestVersion
   selectedDate.value = date
   clearData()
@@ -412,9 +442,29 @@ async function handleDateChange(date) {
   await loadSelectedData(version)
 }
 
+function handleMapReset() {
+  mapInteractionVersion += 1
+  requestVersion += 1
+  selection.province = ''
+  selection.city = ''
+  selection.district = ''
+  selection.scope = 'province'
+  cities.value = []
+  districts.value = []
+  availableDates.value = []
+  selectedDate.value = ''
+  comparisonPoolPromise = undefined
+  clearData()
+  pageError.value = ''
+  locationLoading.value = false
+  payloadLoading.value = false
+}
+
 async function loadInitial() {
+  const initializationToken = mapInteractionVersion
   pageError.value = ''
   const [healthResult, provincesResult] = await Promise.allSettled([getHealth(), getProvinces()])
+  if (initializationToken !== mapInteractionVersion) return
   if (healthResult.status === 'fulfilled') health.value = healthResult.value.data || null
   else healthError.value = healthResult.reason?.message || '健康检查失败'
   if (provincesResult.status !== 'fulfilled') {
@@ -428,7 +478,8 @@ async function loadInitial() {
     payloadLoading.value = false
     return
   }
-  await handleProvinceChange(provinces.value[0])
+  if (initializationToken !== mapInteractionVersion) return
+  await handleProvinceChange(provinces.value[0], initializationToken)
 }
 
 onMounted(loadInitial)
@@ -503,7 +554,7 @@ onMounted(loadInitial)
         <section class="dashboard-column center-column" aria-label="区域数据概览">
           <DashboardPanel title="区域数据概览" subtitle="dashboard/overview · 省级或城市真实 API 聚合">
             <CenterOverview
-              :location="dashboard?.location"
+              :location="dashboard?.location || selection"
               :weather="latestWeather"
               :air-quality="latestAirQuality"
               :air-quality-summary="dashboard?.airQualitySummary"
@@ -511,6 +562,7 @@ onMounted(loadInitial)
               :loading="loading"
               :error="errors.overview"
               @area-select="handleMapAreaSelect"
+              @map-reset="handleMapReset"
             />
           </DashboardPanel>
         </section>

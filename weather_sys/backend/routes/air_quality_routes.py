@@ -13,7 +13,11 @@ air_quality_bp = Blueprint("air_quality", __name__)
 @air_quality_bp.get("/latest")
 def latest_air_quality():
     city = name_param("city", required=True)
-    data = air_quality_service.get_latest_air_quality(city=city)
+    province = name_param("province")
+    params = {"city": city}
+    if province is not None:
+        params["province"] = province
+    data = air_quality_service.get_latest_air_quality(**params)
     if data is None:
         return error_response("air quality record not found", http_status=404)
     return success_response(data=data)

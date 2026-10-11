@@ -188,16 +188,10 @@ async function enterFeature(feature) {
     emitNavigation()
     return
   }
-  if (mapLoading.value) return
   await loadMapAt(node, path)
 }
 
-function handleCarouselSelect(feature) {
-  selectFeature(feature)
-}
-
 async function handleCarouselEnter(feature) {
-  if (mapLoading.value) return
   await enterFeature(feature)
 }
 
@@ -410,7 +404,6 @@ useEChart(chartElement, buildOption, [
       :parent-name="currentNode?.name || '全国'"
       :level-label="currentLevelLabel"
       :loading="mapLoading"
-      @select="handleCarouselSelect"
       @enter="handleCarouselEnter"
     />
     <p class="map-source">边界数据：DataV GeoAtlas · adcode · 按需加载并缓存；天气与空气质量仍来自后端数据库</p>

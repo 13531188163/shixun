@@ -12,7 +12,7 @@ const props = defineProps({
   loading: Boolean,
   error: { type: String, default: '' },
 })
-const emit = defineEmits(['area-select'])
+const emit = defineEmits(['area-select', 'map-reset'])
 </script>
 
 <template>
@@ -40,6 +40,7 @@ const emit = defineEmits(['area-select'])
           :loading="loading"
           :error="error"
           @area-select="emit('area-select', $event)"
+          @map-reset="emit('map-reset')"
         />
         <div class="map-weather-badge">
           <span>{{ weather?.weather || '--' }}</span>

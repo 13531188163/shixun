@@ -130,13 +130,14 @@ function handleSelect(feature, event) {
     event?.stopPropagation()
     return
   }
-  emit('select', feature)
+  // 卡片单击就是统一的行政区钻取入口。选中态由父级地图状态维护，
+  // 这样地图点击、卡片点击和面包屑不会各自维护一套状态。
+  handleEnter(feature, event)
 }
 
 function handleEnter(feature, event) {
   event?.preventDefault()
   event?.stopPropagation()
-  if (props.loading) return
   emit('enter', feature)
 }
 
@@ -208,7 +209,6 @@ onBeforeUnmount(() => {
           role="button"
           tabindex="0"
           @click="handleSelect(feature, $event)"
-          @dblclick="handleEnter(feature, $event)"
           @keydown.enter="handleEnter(feature, $event)"
         >
           <RegionThumbnail :feature="feature" :selected="cardCode(feature, index) === normalizedSelected" />

@@ -10,12 +10,47 @@ import {
   mapSourceUrl,
   normalizeAdministrativeGeoJson,
 } from '../src/utils/administrativeMap.js'
+import {
+  TAIWAN_MAP_PATH,
+  taiwanTopologyToFeatureCollection,
+} from '../src/utils/taiwanAdministrative.js'
 
 function feature(adcode, name, level, childrenNum = 0) {
   return {
     type: 'Feature',
     properties: { adcode, name, level, childrenNum, parent: { adcode: 100000 } },
     geometry: { type: 'Polygon', coordinates: [] },
+  }
+}
+
+function taiwanTopologyFixture() {
+  return {
+    type: 'Topology',
+    transform: { scale: [1, 1], translate: [0, 0] },
+    arcs: [
+      [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]],
+      [[2, 0], [1, 0], [0, 1], [-1, 0], [0, -1]],
+    ],
+    objects: {
+      counties: {
+        type: 'GeometryCollection',
+        geometries: [{
+          type: 'Polygon',
+          arcs: [[0]],
+          properties: { COUNTYCODE: '10002', COUNTYNAME: '宜蘭縣' },
+        }],
+      },
+      towns: {
+        type: 'GeometryCollection',
+        geometries: [{
+          type: 'Polygon',
+          arcs: [[1]],
+          properties: {
+            COUNTYCODE: '10002', COUNTYNAME: '宜蘭縣', TOWNCODE: '10002010', TOWNNAME: '宜蘭市',
+          },
+        }],
+      },
+    },
   }
 }
 
@@ -43,6 +78,42 @@ test('recognizes terminal city-level direct-admin units and district units', () 
   assert.equal(featureLevel(district), 'district')
   assert.equal(isTerminalFeature(district), true)
   assert.equal(isTerminalFeature(cityWithChildren), false)
+})
+
+test('keeps Taiwan official county/town codes and allows 710000 drilldown', () => {
+  const topology = taiwanTopologyFixture()
+  const counties = taiwanTopologyToFeatureCollection(topology, '710000')
+  const towns = taiwanTopologyToFeatureCollection(topology, '10002')
+
+  assert.equal(counties.features.length, 1)
+  assert.equal(counties.features[0].properties.adcode, '10002')
+  assert.equal(counties.features[0].properties.parentAdcode, '710000')
+  assert.equal(counties.features[0].properties.name, '宜兰县')
+  assert.equal(counties.features[0].properties.childrenNum, 1)
+  assert.equal(towns.features[0].properties.adcode, '10002010')
+  assert.equal(towns.features[0].properties.parentAdcode, '10002')
+  assert.equal(towns.features[0].properties.level, 'district')
+  assert.equal(taiwanTopologyToFeatureCollection(topology, '710000').features[0].geometry.type, 'Polygon')
+  assert.equal(isTerminalFeature({
+    properties: { adcode: '710000', name: '台湾省', level: 'province', childrenNum: 0 },
+  }), false)
+})
+
+test('loads Taiwan topology once for province and county views', async () => {
+  clearAdministrativeMapCache()
+  const calls = []
+  const fixture = taiwanTopologyFixture()
+  const fetchImpl = async (url) => {
+    calls.push(url)
+    return { ok: true, json: async () => fixture }
+  }
+
+  const province = await loadAdministrativeMap('710000', { fetchImpl })
+  const county = await loadAdministrativeMap('10002', { fetchImpl })
+  assert.equal(province.features.length, 1)
+  assert.equal(county.features[0].properties.adcode, '10002010')
+  assert.deepEqual(calls, [TAIWAN_MAP_PATH])
+  assert.equal(mapSourceUrl('10002010'), TAIWAN_MAP_PATH)
 })
 
 test('loads national and child maps by adcode and reuses the in-flight promise', async () => {
