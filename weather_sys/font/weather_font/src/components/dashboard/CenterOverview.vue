@@ -9,6 +9,7 @@ const props = defineProps({
   airQuality: { type: Object, default: null },
   airQualitySummary: { type: Object, default: null },
   statistics: { type: Object, default: null },
+  regionMetrics: { type: Object, default: () => ({}) },
   loading: Boolean,
   error: { type: String, default: '' },
 })
@@ -37,6 +38,7 @@ const emit = defineEmits(['area-select', 'map-reset'])
           :location="location"
           :weather="weather"
           :air-quality="airQuality"
+          :region-metrics="regionMetrics"
           :loading="loading"
           :error="error"
           @area-select="emit('area-select', $event)"
@@ -45,7 +47,7 @@ const emit = defineEmits(['area-select', 'map-reset'])
         <div class="map-weather-badge">
           <span>{{ weather?.weather || '--' }}</span>
           <strong>{{ formatTemperature(weather?.maxTemp) }}</strong>
-          <small>当前最高温</small>
+          <small>日最高温</small>
         </div>
       </div>
 
@@ -66,7 +68,7 @@ const emit = defineEmits(['area-select', 'map-reset'])
   height: 100%;
   flex: 1;
   flex-direction: column;
-  gap: 18px;
+  gap: 9px;
 }
 
 .area-heading {
@@ -147,6 +149,7 @@ h3 {
   border: 1px solid rgb(50 201 238 / 56%);
   border-radius: 5px;
   box-shadow: 0 0 20px rgb(32 201 255 / 22%);
+  pointer-events: none;
 }
 
 .map-weather-badge strong {

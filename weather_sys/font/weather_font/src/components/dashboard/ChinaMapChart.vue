@@ -19,6 +19,7 @@ const props = defineProps({
   location: { type: Object, default: null },
   weather: { type: Object, default: null },
   airQuality: { type: Object, default: null },
+  regionMetrics: { type: Object, default: () => ({}) },
   // 保留旧 prop，地图层级现在由自身导航栈管理。
   detailProvince: { type: String, default: '' },
   loading: Boolean,
@@ -241,11 +242,11 @@ function mapData() {
       adcode,
       value: selectedArea ? 1 : 0,
       itemStyle: {
-        areaColor: selectedArea ? 'rgba(243, 171, 78, 0.74)' : hoveredArea ? 'rgba(35, 177, 227, 0.62)' : 'rgba(8, 67, 105, 0.68)',
+        areaColor: selectedArea ? 'rgba(243, 171, 78, 0.82)' : hoveredArea ? 'rgba(35, 177, 227, 0.68)' : 'rgba(8, 67, 105, 0.48)',
         borderColor: selectedArea ? '#ffe0a3' : '#48c9f2',
-        borderWidth: selectedArea ? 1.9 : 0.9,
+        borderWidth: selectedArea ? 2.2 : 0.9,
         shadowColor: selectedArea ? '#ffb64f' : hoveredArea ? '#24d9ff' : 'transparent',
-        shadowBlur: selectedArea ? 24 : hoveredArea ? 16 : 0,
+        shadowBlur: selectedArea ? 28 : hoveredArea ? 18 : 0,
       },
     }
   })
@@ -316,7 +317,7 @@ function buildOption() {
         map: mapName, roam: false, silent: false, layoutCenter: ['50%', '52%'],
         layoutSize: level === 'country' ? '138%' : '128%', zoom,
         selectedMode: false,
-        itemStyle: { areaColor: 'rgba(8, 48, 82, 0.62)', borderColor: 'rgba(73, 198, 238, 0.74)', borderWidth: 0.8, shadowColor: level === 'country' ? 'rgba(20, 192, 255, 0.48)' : 'rgba(255, 173, 70, 0.28)', shadowBlur: level === 'country' ? 14 : 18 },
+        itemStyle: { areaColor: 'rgba(8, 48, 82, 0.54)', borderColor: 'rgba(73, 198, 238, 0.84)', borderWidth: 0.95, shadowColor: level === 'country' ? 'rgba(20, 192, 255, 0.66)' : 'rgba(255, 173, 70, 0.38)', shadowBlur: level === 'country' ? 19 : 22 },
         emphasis: { itemStyle: { areaColor: 'rgba(37, 161, 220, 0.62)', borderColor: '#d6f8ff', borderWidth: 1.35 }, label: { show: true, color: '#f4fdff', fontSize: level === 'country' ? 10 : 11, fontWeight: 700 } },
         label: { show: true, color: 'rgba(190, 230, 245, 0.76)', fontSize: level === 'country' ? 8 : 9, formatter: (params) => compactName(params.name) },
       },
@@ -335,7 +336,7 @@ function buildOption() {
       },
       {
         name: '行政区光晕', type: 'map', map: mapName, geoIndex: 0, silent: true,
-        data: data.map((item) => ({ name: item.name, adcode: item.adcode, itemStyle: { areaColor: 'rgba(0, 171, 229, 0.08)', borderColor: item.adcode === effectiveSelectedAdcode.value ? 'rgba(255, 193, 95, 0.92)' : 'rgba(40, 222, 255, 0.74)', borderWidth: item.adcode === effectiveSelectedAdcode.value ? 3 : 2, shadowColor: item.adcode === effectiveSelectedAdcode.value ? 'rgba(255, 154, 44, 0.84)' : 'rgba(0, 195, 255, 0.72)', shadowBlur: item.adcode === effectiveSelectedAdcode.value ? 25 : 18 } })),
+        data: data.map((item) => ({ name: item.name, adcode: item.adcode, itemStyle: { areaColor: 'rgba(0, 171, 229, 0.06)', borderColor: item.adcode === effectiveSelectedAdcode.value ? 'rgba(255, 211, 126, 0.98)' : 'rgba(40, 222, 255, 0.78)', borderWidth: item.adcode === effectiveSelectedAdcode.value ? 3.2 : 2, shadowColor: item.adcode === effectiveSelectedAdcode.value ? 'rgba(255, 154, 44, 0.92)' : 'rgba(0, 195, 255, 0.78)', shadowBlur: item.adcode === effectiveSelectedAdcode.value ? 30 : 20 } })),
         label: { show: false },
       },
       {
@@ -404,6 +405,9 @@ useEChart(chartElement, buildOption, [
       :parent-name="currentNode?.name || '全国'"
       :level-label="currentLevelLabel"
       :loading="mapLoading"
+      :weather="weather"
+      :air-quality="airQuality"
+      :region-metrics="regionMetrics"
       @enter="handleCarouselEnter"
     />
     <p class="map-source">边界数据：DataV GeoAtlas · adcode · 按需加载并缓存；天气与空气质量仍来自后端数据库</p>
@@ -418,9 +422,9 @@ useEChart(chartElement, buildOption, [
 .breadcrumb-item { padding: 2px 4px; color: var(--text-secondary); font: inherit; background: transparent; border: 0; border-radius: 3px; cursor: pointer; }
 .breadcrumb-item:hover, .breadcrumb-item:focus-visible { color: var(--text-primary); background: rgb(39 177 223 / 18%); outline: none; }
 .breadcrumb-item.active { color: #ffe0a3; font-weight: 700; }
-.map-canvas { position: relative; display: flex; min-height: 360px; flex: 1; overflow: hidden; background: radial-gradient(ellipse 66% 62% at 49% 48%, rgb(14 99 151 / 30%), transparent 70%), radial-gradient(circle at 51% 48%, rgb(38 190 225 / 11%), transparent 38%), repeating-linear-gradient(118deg, transparent 0 21px, rgb(61 147 187 / 4%) 22px, transparent 23px 46px), linear-gradient(180deg, #031a35 0%, #021229 58%, #020d20 100%); border-radius: 4px; }
+.map-canvas { position: relative; display: flex; min-height: clamp(300px, 38vh, 650px); flex: 1; overflow: hidden; background: radial-gradient(ellipse 66% 62% at 49% 48%, rgb(14 99 151 / 34%), transparent 70%), radial-gradient(circle at 51% 48%, rgb(38 190 225 / 14%), transparent 38%), repeating-linear-gradient(118deg, transparent 0 21px, rgb(61 147 187 / 5%) 22px, transparent 23px 46px), linear-gradient(180deg, #031a35 0%, #021229 58%, #020d20 100%); border: 1px solid rgb(34 163 220 / 28%); border-radius: 5px; box-shadow: inset 0 0 32px rgb(0 95 160 / 20%), 0 0 28px rgb(0 190 255 / 12%); }
 .map-canvas::before { position: absolute; z-index: 0; inset: 0; pointer-events: none; content: ''; opacity: 0.46; background: repeating-linear-gradient(90deg, transparent 0 54px, rgb(82 176 217 / 5%) 55px, transparent 56px 110px), repeating-linear-gradient(0deg, transparent 0 54px, rgb(82 176 217 / 4%) 55px, transparent 56px 110px); mask-image: radial-gradient(ellipse at center, #000 24%, transparent 84%); }
-.echart, .china-map-chart { position: relative; z-index: 1; width: 100%; height: 100%; min-height: 360px; flex: 1 1 auto; }
+.echart, .china-map-chart { position: relative; z-index: 1; width: 100%; height: 100%; min-height: 0; flex: 1 1 auto; }
 .map-loading, .map-error, .map-terminal-note { position: absolute; z-index: 4; color: var(--text-secondary); font-size: 11px; background: rgb(3 27 57 / 86%); border: 1px solid rgb(56 184 228 / 52%); border-radius: 5px; box-shadow: 0 0 18px rgb(32 201 255 / 16%); }
 .map-initial-loading { inset: 0; display: grid; place-items: center; background: rgb(2 17 37 / 75%); border: 0; border-radius: 0; }
 .map-loading-overlay { top: 9px; right: 9px; padding: 6px 9px; color: #bcefff; }
@@ -428,4 +432,8 @@ useEChart(chartElement, buildOption, [
 .map-error button { padding: 3px 7px; color: var(--text-primary); font: inherit; background: rgb(28 79 112 / 82%); border: 1px solid rgb(74 203 241 / 62%); border-radius: 3px; cursor: pointer; }
 .map-terminal-note { right: 9px; bottom: 9px; max-width: min(80%, 360px); padding: 6px 9px; color: #ffe0a3; }
 .map-source { flex: 0 0 auto; margin: 0; color: rgb(145 203 230 / 58%); font-size: 9px; line-height: 1.3; }
+
+@media (max-width: 760px) {
+  .map-canvas { min-height: 300px; }
+}
 </style>

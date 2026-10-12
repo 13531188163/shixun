@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import RegionThumbnail from './RegionThumbnail.vue'
 import { featureAdcode, featureName, isTerminalFeature } from '../../utils/administrativeMap'
+import { formatNumber, formatTemperature } from '../../utils/formatters'
 
 const props = defineProps({
   features: { type: Array, default: () => [] },
@@ -9,6 +10,10 @@ const props = defineProps({
   parentName: { type: String, default: '全国' },
   levelLabel: { type: String, default: '行政区边界' },
   loading: Boolean,
+  weather: { type: Object, default: null },
+  airQuality: { type: Object, default: null },
+  // 只接收后端真实返回的区域指标；缺失时明确显示暂无数据。
+  regionMetrics: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['select', 'enter'])
@@ -32,6 +37,26 @@ const hasOverflow = computed(() => canScrollLeft.value || canScrollRight.value)
 
 function cardCode(feature, index) {
   return String(featureAdcode(feature) || featureName(feature) || index)
+}
+
+function metricFor(feature) {
+  const name = String(featureName(feature) || '').trim()
+  const variants = [name, name.replace(/特别行政区|自治区|自治州|地区|盟|省|市$/u, '')]
+  return variants.map((key) => props.regionMetrics[key]).find(Boolean) || null
+}
+
+function selectedCard(feature, index) {
+  return cardCode(feature, index) === normalizedSelected.value
+}
+
+function cardWeather(feature, index) {
+  if (!selectedCard(feature, index)) return metricFor(feature)?.weather || null
+  return props.weather || metricFor(feature)?.weather || null
+}
+
+function cardAirQuality(feature, index) {
+  if (!selectedCard(feature, index)) return metricFor(feature)?.airQuality || null
+  return props.airQuality || metricFor(feature)?.airQuality || null
 }
 
 function setCardElement(element, feature, index) {
@@ -211,14 +236,17 @@ onBeforeUnmount(() => {
           @click="handleSelect(feature, $event)"
           @keydown.enter="handleEnter(feature, $event)"
         >
-          <RegionThumbnail :feature="feature" :selected="cardCode(feature, index) === normalizedSelected" />
+          <RegionThumbnail :feature="feature" :selected="cardCode(feature, index) === normalizedSelected" :height="54" />
           <div class="region-card-meta">
             <strong>{{ featureName(feature) }}</strong>
             <small>{{ featureAdcode(feature) || '编码不可用' }}</small>
           </div>
-          <button type="button" class="enter-region" :disabled="loading" @click="handleEnter(feature, $event)">
-            {{ isTerminalFeature(feature) ? '查看数据' : '进入区域' }}
-          </button>
+          <div class="region-card-data" aria-label="区域真实数据">
+            <span>{{ cardWeather(feature, index)?.weather || (metricFor(feature) ? '暂无天气' : '点击加载') }}</span>
+            <b>日最高 {{ formatTemperature(cardWeather(feature, index)?.maxTemp) }}</b>
+            <em>AQI {{ formatNumber(cardAirQuality(feature, index)?.aqi) }}</em>
+          </div>
+          <span class="enter-region">{{ isTerminalFeature(feature) ? '查看数据' : '单击进入' }}</span>
         </article>
       </div>
       <button type="button" class="carousel-arrow next" :disabled="!canScrollRight" aria-label="向右滚动" @click="scrollNext">›</button>
@@ -330,7 +358,7 @@ onBeforeUnmount(() => {
   min-width: 128px;
   width: 128px;
   flex: 0 0 128px;
-  gap: 4px;
+  gap: 5px;
   padding: 5px;
   color: var(--text-secondary);
   background: linear-gradient(155deg, rgb(8 62 101 / 83%), rgb(3 35 67 / 92%));
@@ -347,9 +375,12 @@ onBeforeUnmount(() => {
 .region-card-meta { display: flex; min-width: 0; align-items: baseline; justify-content: space-between; gap: 4px; }
 .region-card-meta strong { overflow: hidden; color: var(--text-primary); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .region-card-meta small { color: rgb(145 203 230 / 67%); font-size: 8px; }
-.enter-region { padding: 2px 4px; color: #a9eaff; font-size: 8px; background: rgb(10 78 117 / 72%); border: 1px solid rgb(56 185 226 / 48%); border-radius: 3px; cursor: pointer; }
+.region-card-data { display: grid; min-width: 0; grid-template-columns: 1fr auto; align-items: center; gap: 2px 4px; color: var(--text-muted); font-size: 8px; }
+.region-card-data span { overflow: hidden; grid-column: 1 / -1; color: var(--text-secondary); text-overflow: ellipsis; white-space: nowrap; }
+.region-card-data b { color: var(--text-primary); font-size: 10px; font-weight: 700; }
+.region-card-data em { color: var(--accent-green); font-size: 8px; font-style: normal; white-space: nowrap; }
+.enter-region { display: inline-block; width: fit-content; padding: 2px 4px; color: #a9eaff; font-size: 8px; background: rgb(10 78 117 / 72%); border: 1px solid rgb(56 185 226 / 48%); border-radius: 3px; }
 .region-card.selected .enter-region { color: #ffe0a3; border-color: rgb(255 192 89 / 70%); background: rgb(111 76 33 / 52%); }
-.enter-region:disabled { cursor: wait; opacity: 0.5; }
 .carousel-empty { margin: 4px; color: var(--text-muted); font-size: 10px; }
 .carousel-hint { display: block; margin: 4px 4px 0; color: rgb(145 203 230 / 52%); }
 
@@ -357,5 +388,9 @@ onBeforeUnmount(() => {
   .carousel-heading > div { gap: 5px; }
   .carousel-kicker { display: none; }
   .region-card { min-width: 116px; width: 116px; flex-basis: 116px; }
+}
+
+@media (min-width: 761px) and (max-width: 1500px) {
+  .region-card { min-width: 112px; width: 112px; flex-basis: 112px; }
 }
 </style>
