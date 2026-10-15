@@ -14,7 +14,6 @@ import {
   numericValue,
   rgba,
 } from '../../utils/chartTheme'
-import { formatNumber } from '../../utils/formatters'
 
 const props = defineProps({
   data: { type: Array, default: () => [] },
@@ -23,6 +22,12 @@ const props = defineProps({
 })
 
 const chartElement = ref(null)
+
+function formatPrecipitation(value) {
+  if (value === null || value === undefined || value === '') return '暂无数据'
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric.toFixed(2) : '暂无数据'
+}
 
 function buildOption() {
   const rows = props.data || []
@@ -37,7 +42,8 @@ function buildOption() {
       formatter: (items) => {
         if (!items?.length) return ''
         const item = items[0]
-        return `<strong>${item.axisValue || '--'}</strong><br/>${item.marker}降水量：${formatNumber(item.value)} mm`
+        const value = formatPrecipitation(item.value)
+        return `<strong>${item.axisValue || '暂无数据'}</strong><br/>${item.marker}区域日均降水量：${value}${value === '暂无数据' ? '' : ' mm'}`
       },
     },
     xAxis: {
@@ -57,7 +63,7 @@ function buildOption() {
       name: 'mm',
       nameLocation: 'end',
       nameTextStyle: AXIS_NAME,
-      axisLabel: { ...VALUE_AXIS.axisLabel, formatter: (value) => `${value}` },
+      axisLabel: { ...VALUE_AXIS.axisLabel, formatter: (value) => formatPrecipitation(value) },
     },
     series: [
       {

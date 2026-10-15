@@ -71,9 +71,12 @@ def _validate_days(days: int, maximum: int) -> None:
 
 
 def _latest_dates(cursor: Any, clauses: list[str], params: list[Any], days: int) -> list[str]:
+    valid_precipitation = (
+        "TRIM(total_precip) REGEXP '^[0-9]+(\\.[0-9]+)?$'"
+    )
     sql = (
         "SELECT DISTINCT date FROM weather_data "
-        f"WHERE {' AND '.join(clauses)} "
+        f"WHERE {' AND '.join([*clauses, valid_precipitation])} "
         "ORDER BY date DESC LIMIT %s"
     )
     cursor.execute(sql, [*params, days])
@@ -109,23 +112,27 @@ def _regional_daily_sql(
     where_sql = " AND ".join(clauses)
     district_daily = (
         "SELECT province, city, district, date, "
-        f"AVG({precipitation}) AS precip "
+        f"AVG({precipitation}) AS precip, "
+        f"COUNT({precipitation}) AS source_records "
         "FROM weather_data "
         f"WHERE {where_sql} "
         "GROUP BY province, city, district, date"
     )
     city_daily = (
-        "SELECT province, city, date, AVG(precip) AS precip "
+        "SELECT province, city, date, AVG(precip) AS precip, "
+        "SUM(source_records) AS source_records "
         f"FROM ({district_daily}) AS district_daily "
         "GROUP BY province, city, date"
     )
     province_daily = (
-        "SELECT province, date, AVG(precip) AS precip "
+        "SELECT province, date, AVG(precip) AS precip, "
+        "SUM(source_records) AS source_records "
         f"FROM ({city_daily}) AS city_daily "
         "GROUP BY province, date"
     )
     national_daily = (
-        "SELECT date, AVG(precip) AS precip "
+        "SELECT date, AVG(precip) AS precip, "
+        "SUM(source_records) AS source_records "
         f"FROM ({province_daily}) AS province_daily "
         "GROUP BY date"
     )
@@ -142,7 +149,8 @@ def _regional_daily_sql(
     # The final grouping produces the same shape for every scope and removes
     # any duplicate keys that can remain when a caller omits a parent filter.
     return (
-        "SELECT date, AVG(precip) AS precip "
+        "SELECT date, AVG(precip) AS precip, "
+        "SUM(source_records) AS source_records "
         f"FROM ({scoped_daily}) AS scoped_daily "
         "GROUP BY date"
     )
@@ -201,7 +209,8 @@ def get_rainfall_core(
         district=district,
     )
     sql = (
-        "SELECT COUNT(*) AS record_count, "
+        "SELECT COUNT(precip) AS observation_days, "
+        "SUM(source_records) AS observation_records, "
         "SUM(precip) AS total_precip, "
         "AVG(precip) AS avg_precip, "
         "MAX(precip) AS max_precip, "
@@ -219,7 +228,7 @@ def get_rainfall_core(
             aggregate = cursor.fetchone()
             cursor.execute(max_date_sql, list(params))
             max_date = cursor.fetchone()
-    if not aggregate or int(aggregate.get("record_count") or 0) == 0:
+    if not aggregate or int(aggregate.get("observation_days") or 0) == 0:
         return None
     return {
         **aggregate,

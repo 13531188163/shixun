@@ -55,6 +55,17 @@ def _numeric(value: Any) -> int | float | None:
     return parse_precipitation(value)
 
 
+def _count(value: Any) -> int | None:
+    """Convert an aggregate count without turning an unknown value into zero."""
+
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
 def get_rainfall_dates(
     *,
     province: str | None = None,
@@ -93,7 +104,9 @@ def get_rainfall_core(
         "avgPrecip": average,
         "maxPrecip": maximum,
         "maxPrecipDate": format_date(row.get("max_precip_date")),
-        "rainyDays": int(row.get("rainy_days") or 0),
+        "rainyDays": _count(row.get("rainy_days")),
+        "observationDays": _count(row.get("observation_days")),
+        "observationRecords": _count(row.get("observation_records")),
     }
 
 
@@ -116,7 +129,11 @@ def get_recent_rainfall(
         {
             "date": format_date(row.get("date")),
             "precip": _numeric(row.get("precip")),
-            "weather": row.get("weather"),
+            "weather": (
+                row.get("weather").strip()
+                if isinstance(row.get("weather"), str) and row.get("weather").strip()
+                else None
+            ),
         }
         for row in reversed(rows)
         if format_date(row.get("date")) is not None

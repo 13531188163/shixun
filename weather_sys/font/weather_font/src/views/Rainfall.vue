@@ -14,7 +14,7 @@ import ChartState from '../components/dashboard/ChartState.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import RainfallDistributionChart from '../components/rainfall/RainfallDistributionChart.vue'
 import RainfallTrendChart from '../components/rainfall/RainfallTrendChart.vue'
-import { formatNumber, formatPrecipitation, weatherSymbol, weatherTypeClass } from '../utils/formatters'
+import { weatherSymbol, weatherTypeClass } from '../utils/formatters'
 
 const provinces = ref([])
 const cities = ref([])
@@ -67,13 +67,37 @@ const endDateOptions = computed(() => availableDates.value.filter(
   (date) => !startDate.value || date >= startDate.value,
 ))
 
-const totalPrecipText = computed(() => formatPrecipitation(core.value?.totalPrecip))
-const avgPrecipText = computed(() => formatPrecipitation(core.value?.avgPrecip))
-const maxPrecipText = computed(() => formatPrecipitation(core.value?.maxPrecip))
-const rainyDaysText = computed(() => formatNumber(core.value?.rainyDays))
+function formatRainfallValue(value) {
+  if (value === null || value === undefined || value === '') return '暂无数据'
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? `${numeric.toFixed(2)} mm` : '暂无数据'
+}
+
+function formatDayCount(value) {
+  if (value === null || value === undefined || value === '') return '暂无数据'
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? String(Math.trunc(numeric)) : '暂无数据'
+}
+
+function formatDateValue(value) {
+  return value || '暂无数据'
+}
+
+const totalPrecipText = computed(() => formatRainfallValue(core.value?.totalPrecip))
+const avgPrecipText = computed(() => formatRainfallValue(core.value?.avgPrecip))
+const maxPrecipText = computed(() => formatRainfallValue(core.value?.maxPrecip))
+const rainyDaysText = computed(() => {
+  const value = formatDayCount(core.value?.rainyDays)
+  return value === '暂无数据' ? value : `${value} 天`
+})
 
 const peakTrend = computed(() => {
-  const rows = trend.value.filter((row) => Number.isFinite(Number(row.precip)))
+  const rows = trend.value.filter((row) => (
+    row.precip !== null
+    && row.precip !== undefined
+    && row.precip !== ''
+    && Number.isFinite(Number(row.precip))
+  ))
   return rows.reduce((peak, row) => (
     peak === null || Number(row.precip) > Number(peak.precip) ? row : peak
   ), null)
@@ -91,22 +115,22 @@ const conclusionItems = computed(() => {
   if (core.value?.totalPrecip !== null && core.value?.totalPrecip !== undefined) {
     items.push({
       tone: 'rain',
-      label: '累计降水',
-      text: `${locationLabel.value}在${dateLabel.value}累计降水 ${totalPrecipText.value}。`,
+      label: '区域日均累计',
+      text: `${locationLabel.value}在${dateLabel.value}的区域日均降水累计值为 ${totalPrecipText.value}（统计估计口径，不代表站点实测或全国面雨量）。`,
     })
   }
   if (peakTrend.value) {
     items.push({
       tone: 'peak',
       label: '降水集中日',
-      text: `近30个观测日中，${peakTrend.value.date}降水最多，为 ${formatPrecipitation(peakTrend.value.precip)}。`,
+      text: `近30个观测日中，${peakTrend.value.date}区域日均降水最多，为 ${formatRainfallValue(peakTrend.value.precip)}。`,
     })
   }
   if (dominantLevel.value) {
     items.push({
       tone: 'level',
       label: '等级特点',
-      text: `降水等级分布中，${dominantLevel.value.level}占 ${dominantLevel.value.count} 个观测日，按真实观测日期统计。`,
+      text: `降水等级分布中，${dominantLevel.value.level}占 ${dominantLevel.value.count} 个有效观测日，按区域日值统计。`,
     })
   }
   return items
@@ -406,15 +430,15 @@ onMounted(loadInitial)
             <article class="rainfall-metric-card total-card">
               <span class="metric-icon">∑</span>
               <div>
-                <span class="metric-label">累计降水量</span>
+                <span class="metric-label">区域日均降水累计值</span>
                 <strong>{{ totalPrecipText }}</strong>
-                <small>按区域日均降水量累计</small>
+                <small>估计：区域日均累计，非站点/全国面雨量</small>
               </div>
             </article>
             <article class="rainfall-metric-card average-card">
               <span class="metric-icon">≈</span>
               <div>
-                <span class="metric-label">平均降水量</span>
+                <span class="metric-label">区域日均降水量</span>
                 <strong>{{ avgPrecipText }}</strong>
                 <small>来源字段：total_precip</small>
               </div>
@@ -422,17 +446,17 @@ onMounted(loadInitial)
             <article class="rainfall-metric-card max-card">
               <span class="metric-icon">↑</span>
               <div>
-                <span class="metric-label">最大单日降水</span>
+                <span class="metric-label">区域日均最大降水</span>
                 <strong>{{ maxPrecipText }}</strong>
-                <small>出现日期：{{ core?.maxPrecipDate || '--' }}</small>
+                <small>出现日期：{{ formatDateValue(core?.maxPrecipDate) }}</small>
               </div>
             </article>
             <article class="rainfall-metric-card days-card">
               <span class="metric-icon">☔</span>
               <div>
                 <span class="metric-label">降水天数</span>
-                <strong>{{ rainyDaysText }} 天</strong>
-                <small>区域日均降水量大于 0 的观测日</small>
+                <strong>{{ rainyDaysText }}</strong>
+                <small>区域日值大于 0 的不同日期</small>
               </div>
             </article>
           </div>
@@ -440,14 +464,14 @@ onMounted(loadInitial)
       </DashboardPanel>
 
       <div class="rainfall-analysis-grid">
-        <DashboardPanel class="rainfall-recent-panel" title="近7日降水情况" subtitle="weather_data · 实际观测日记录">
+        <DashboardPanel class="rainfall-recent-panel" title="近7日降水情况" subtitle="区域日均值 · 实际观测日记录">
           <ChartState :loading="loading" :error="''" :empty="!recent.length" empty-message="当前筛选范围暂无观测数据">
             <div class="recent-rainfall-grid">
               <article v-for="row in recent" :key="row.date" class="recent-rainfall-card">
                 <div class="recent-date">{{ row.date }}</div>
                 <div :class="['recent-weather-icon', weatherTypeClass(row.weather)]">{{ weatherSymbol(row.weather) }}</div>
-                <div class="recent-weather-name">{{ row.weather || '天气未记录' }}</div>
-                <strong class="recent-precip">{{ formatPrecipitation(row.precip) }}</strong>
+                <div class="recent-weather-name">{{ row.weather || '暂无数据' }}</div>
+                <strong class="recent-precip">{{ formatRainfallValue(row.precip) }}</strong>
                 <small>区域日平均降水量</small>
               </article>
             </div>

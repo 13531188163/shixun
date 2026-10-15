@@ -819,13 +819,18 @@ components:
         minTemp: {type: number, nullable: true}
     RainfallCore:
       type: object
-      required: [totalPrecip, avgPrecip, maxPrecip, maxPrecipDate, rainyDays]
+      required: [totalPrecip, avgPrecip, maxPrecip, maxPrecipDate, rainyDays, observationDays, observationRecords]
       properties:
-        totalPrecip: {type: number, nullable: true}
+        totalPrecip:
+          type: number
+          nullable: true
+          description: Estimated sum of regional daily mean precipitation; not a station sum or strict national areal rainfall.
         avgPrecip: {type: number, nullable: true}
         maxPrecip: {type: number, nullable: true}
         maxPrecipDate: {type: string, format: date, nullable: true}
-        rainyDays: {type: integer, minimum: 0}
+        rainyDays: {type: integer, minimum: 0, nullable: true, description: Distinct regional daily dates whose aggregated precipitation is greater than zero.}
+        observationDays: {type: integer, minimum: 0, nullable: true, description: Number of valid regional daily values used by the indicators.}
+        observationRecords: {type: integer, minimum: 0, nullable: true, description: Number of valid source weather_data precipitation records; kept separate from daily counts.}
     RainfallRecent:
       type: object
       required: [date, precip, weather]
@@ -1159,7 +1164,7 @@ components:
                 properties:
                   days: {type: integer, enum: [7]}
     RainfallCoreSuccess:
-      description: Hierarchy-aware regional daily-average rainfall totals and indicators.
+      description: Hierarchy-aware regional daily-average rainfall indicators. totalPrecip is an estimated sum across selected dates, not a spatial sum of child-region millimetres.
       content:
         application/json:
           schema:

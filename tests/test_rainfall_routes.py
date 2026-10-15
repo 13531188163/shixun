@@ -29,6 +29,8 @@ class RainfallRouteTests(unittest.TestCase):
             "maxPrecip": 8.0,
             "maxPrecipDate": "2026-05-17",
             "rainyDays": 3,
+            "observationDays": 5,
+            "observationRecords": 12,
         },
     )
     def test_core_uses_camel_case_response(self, service):
@@ -37,6 +39,8 @@ class RainfallRouteTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["data"]["rainyDays"], 3)
+        self.assertEqual(response.get_json()["data"]["observationDays"], 5)
+        self.assertEqual(response.get_json()["data"]["observationRecords"], 12)
         service.assert_called_once_with(
             province="山东",
             city=None,

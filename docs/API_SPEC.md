@@ -541,7 +541,8 @@ message 可读但不得泄漏 SQL、密码或连接串。
 历史观测日期筛选条件。
 
 降水指标不把不同区县的毫米数直接相加。所有降水接口先按行政层级生成区域日值：
-区县 → 城市 → 省级 → 全国逐级取等权平均；核心累计值是区域日值跨日期的累计。
+区县 → 城市 → 省级 → 全国逐级取等权平均；核心累计值是区域日值跨日期的累计估计，
+不代表站点实测累计或严格意义上的全国面雨量。
 
 ### 7.1 可用降水观测日期
 
@@ -565,10 +566,14 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 区域日值口径：原始表只有区县观测。先按 `province + city + district + date`
   去重并取日均；城市日值取所属区县日值的平均，省级日值取所属城市日值的平均，
   全国日值取所属省份日值的平均。这样每个下级行政区在同一天只贡献一个等权观测值。
-- 数据计算方式：核心指标对区域日值序列计算累计（`SUM`）、平均（`AVG`）和最大值（`MAX`）；
-  最大值日期按日期倒序稳定选择；降水天数统计区域日值大于 0 的实际观测日期数。
+  没有记录的行政单元不补值，因此全国结果只代表当日有有效记录的行政单元。
+- 数据计算方式：核心指标对区域日值序列计算区域日均降水累计估计值（`SUM`）、平均（`AVG`）和最大值（`MAX`）；
+  该累计值不代表站点实测累计，也不代表严格意义上的全国面雨量。最大值日期按日期倒序稳定选择；
+  降水天数先按日期聚合，再统计区域日值大于 0 的不同自然日期数，因此不会超过有效观测日期数。
   无法解析或为负的降水值不参与区域日值聚合。
-- 成功数据结构：`{"totalPrecip": number|null, "avgPrecip": number|null, "maxPrecip": number|null, "maxPrecipDate": date|null, "rainyDays": number}`。
+- `observationDays` 是有效区域日值数量；`observationRecords` 是筛选范围内有效的原始观测记录数量，
+  二者均与 `rainyDays` 分开返回，不能互相替代。
+- 成功数据结构：`{"totalPrecip": number|null, "avgPrecip": number|null, "maxPrecip": number|null, "maxPrecipDate": date|null, "rainyDays": number|null, "observationDays": number|null, "observationRecords": number|null}`。
 - HTTP Status：200、400、404、500；没有有效降水记录时返回 404。
 - 前端对应模块：降水核心指标卡片。
 

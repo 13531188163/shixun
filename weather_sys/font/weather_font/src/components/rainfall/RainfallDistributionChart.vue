@@ -21,9 +21,6 @@ const levelColors = Object.freeze({
 })
 
 const totalCount = computed(() => (props.data || []).reduce((sum, row) => sum + Number(row.count || 0), 0))
-const rainyCount = computed(() => (props.data || [])
-  .filter((row) => row.level !== '无降水')
-  .reduce((sum, row) => sum + Number(row.count || 0), 0))
 
 function percentage(count) {
   const total = totalCount.value
@@ -70,7 +67,7 @@ function buildOption() {
         left: '27%',
         top: '42%',
         style: {
-          text: `${rainyCount.value}天`,
+          text: `${totalCount.value}天`,
           fill: CHART_COLORS.text,
           fontSize: 25,
           fontWeight: 700,
@@ -82,7 +79,7 @@ function buildOption() {
         left: '27%',
         top: '57%',
         style: {
-          text: '总降水天数',
+          text: '有效观测天数',
           fill: CHART_COLORS.textMuted,
           fontSize: 11,
           textAlign: 'center',
@@ -113,7 +110,7 @@ function buildOption() {
   }
 }
 
-useEChart(chartElement, buildOption, [() => props.data, () => props.loading, () => props.error, totalCount, rainyCount])
+useEChart(chartElement, buildOption, [() => props.data, () => props.loading, () => props.error, totalCount])
 </script>
 
 <template>

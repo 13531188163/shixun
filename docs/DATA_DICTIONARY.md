@@ -70,7 +70,7 @@ weather_data 的 AUTO_INCREMENT 为 1,337,960，但样例 id 不连续，不能�
 | min_temp | varchar(20) | 是 | 5.6℃、-0.2℃ | 日最低温度 | minTemp | 去 ℃ 后 string → number |
 | avg_wind | varchar(20) | 是 | 1.56 | 日平均风速 | avgWind | string → number |
 | max_wind | varchar(20) | 是 | 9.5 | 日最大风速 | maxWind | string → number |
-| total_precip | varchar(20) | 是 | 0、14.8 | 日总降水量 | precipitation | string → number；字段重命名 |
+| total_precip | varchar(20) | 是 | 0、14.8 | 日总降水量（mm） | precipitation | string → number；字段重命名 |
 | created_at | timestamp | 是，默认 CURRENT_TIMESTAMP | 2026-05-26 12:24:48 | 数据导入时间 | createdAt（需要时） | snake_case → camelCase、时间格式化 |
 
 ### 5.1 天气字段转换重点
@@ -93,7 +93,13 @@ API 必须返回：
 需要展示较大区域时，不得直接把所有区县的毫米数相加。统一先生成区域日值：同一
 区县同一天的重复记录取平均；城市日值取所属区县日值平均；省级日值取所属城市日值
 平均；全国日值取所属省份日值平均。累计、平均、最大值和降水日数均基于这条区域日值
-序列计算，保证不同区域层级的数值具有可比性。
+序列计算，保证不同区域层级的数值具有可比性。区域日值跨日期求和得到的是统计估计，
+不代表站点实测累计或严格意义上的全国面雨量。`observationRecords` 单独记录筛选范围内
+有效原始观测行数，`observationDays` 记录有效区域日值数量，二者不能当作降水天数。
+
+对当前原始 dump 的只读检查结果：834,971 条天气记录、267 个有效观测日期，
+`total_precip` 全部为可解析的非负数值；发现 84 个区县/日期键存在重复行，
+因此区县日值必须先对重复行取平均。
 
 ## 6. wind_data 字段
 
