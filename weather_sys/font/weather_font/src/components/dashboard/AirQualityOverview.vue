@@ -12,7 +12,7 @@ const props = defineProps({
 })
 
 const emptyMessage = computed(() => {
-  const label = props.location?.city || props.location?.province || '当前地区'
+  const label = props.location?.city || props.location?.province || (props.location?.scope === 'country' ? '全国' : '当前地区')
   return `${label}${props.location?.city ? '' : '范围'}暂无空气质量快照（AQI 表未覆盖）`
 })
 

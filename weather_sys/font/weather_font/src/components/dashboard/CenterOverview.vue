@@ -22,8 +22,8 @@ const emit = defineEmits(['area-select'])
       <div class="area-heading">
         <div>
           <span class="area-kicker">FIXED DATA DATE</span>
-          <h3>{{ location?.province || '--' }} · {{ location?.city || '省级汇总' }}</h3>
-          <p>{{ location?.district || (location?.scope === 'province' ? '全省聚合' : '稳定代表区县') }} · {{ weather?.date || '固定日期数据' }}</p>
+          <h3>{{ location?.province || (location?.scope === 'country' ? '全国' : '--') }} · {{ location?.city || (location?.scope === 'country' ? '全国汇总' : '省级汇总') }}</h3>
+          <p>{{ location?.district || (location?.scope === 'country' ? '请选择上方省份筛选' : location?.scope === 'province' ? '全省聚合' : '稳定代表区县') }} · {{ weather?.date || '固定日期数据' }}</p>
         </div>
         <div class="center-aqi">
           <span>AQI</span>

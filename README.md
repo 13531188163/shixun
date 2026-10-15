@@ -85,6 +85,12 @@ CREATE DATABASE weather_db
 mysql -u root -p weather_db < database/weather_data.sql
 ```
 
+温度和降水分析页使用日期范围查询。导入原始数据后再执行一次性能迁移：
+
+```bash
+mysql -u root -p weather_db < database/migrations/20261014_weather_temperature_indexes.sql
+```
+
 也可以使用 MySQL Workbench、Navicat 等数据库工具打开 SQL 文件并执行。
 
 > 建议将数据库地址、用户名和密码改为环境变量，不要将真实密码提交到公开仓库。
@@ -189,7 +195,7 @@ weatherdemo/
 
 ### 数据库与环境变量
 
-数据库为 `weather_db`，原始数据文件为 `database/weather_data.sql`，请先启动 MySQL，再执行 `mysql -u root -p weather_db < database/weather_data.sql`（已有数据库时无需重复导入）。根目录 `.env.example` 包含 `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME`、Flask 端口和 CORS 配置；真实 `.env` 已忽略，不应提交。
+数据库为 `weather_db`，原始数据文件为 `database/weather_data.sql`，请先启动 MySQL，再执行 `mysql -u root -p weather_db < database/weather_data.sql`（已有数据库时无需重复导入）。根目录 `.env.example` 包含 `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME`、`DB_READ_TIMEOUT`、Flask 端口和 CORS 配置；真实 `.env` 已忽略，不应提交。
 
 ### 推荐启动方式
 

@@ -15,7 +15,7 @@
   --color-glow: rgb(33 171 228 / 22%);
   --panel-radius: 7px;
   --panel-gap: 12px;
-  --header-height: 86px;
+  --header-height: 124px;
   --toolbar-height: 52px;
   --font-title: clamp(28px, 2vw, 36px);
   --font-panel-title: 16px;

@@ -35,7 +35,11 @@ weather_data 的 AUTO_INCREMENT 为 1,337,960，但样例 id 不连续，不能�
 - 主键：id
 - 普通索引：idx_city(city)、idx_year(year)、idx_month(month)
 
-原表没有 date 复合索引，也没有业务唯一约束。正式实现必须先用省/市/区县条件缩小范围，再做日期解析、排序和 LIMIT；如需优化索引只能新增独立 migration，不能改写原始 SQL。
+原表没有 date 复合索引，也没有业务唯一约束。正式实现必须先用省/市/区县条件缩小范围，再做日期范围过滤、排序和 LIMIT；如需优化索引只能新增独立 migration，不能改写原始 SQL。
+
+温度和降水分析性能迁移 `database/migrations/20261014_weather_temperature_indexes.sql`
+会在导入原始 dump 后额外创建 `date` 和
+`(province, city, district, date)` 索引；这些索引不属于原始数据资产，需单独执行。
 
 ## 4. air_quality_data 字段
 
@@ -82,6 +86,14 @@ API 必须返回：
     minTemp = 8.2
 
 遇到 NULL、空字符串、无法解析的单位文本时，API 返回 null，不得用 0 或随机数填充。所有数值转换都必须在 service/utils 层完成。
+
+### 5.2 行政层级聚合口径
+
+`weather_data` 当前实际提供的是区县级观测记录，没有独立的省级或城市级观测行。
+需要展示较大区域时，不得直接把所有区县的毫米数相加。统一先生成区域日值：同一
+区县同一天的重复记录取平均；城市日值取所属区县日值平均；省级日值取所属城市日值
+平均；全国日值取所属省份日值平均。累计、平均、最大值和降水日数均基于这条区域日值
+序列计算，保证不同区域层级的数值具有可比性。
 
 ## 6. wind_data 字段
 

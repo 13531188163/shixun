@@ -25,6 +25,7 @@ def _active_settings() -> Settings:
             db_user=current_app.config["DB_USER"],
             db_password=current_app.config["DB_PASSWORD"],
             db_name=current_app.config["DB_NAME"],
+            db_read_timeout=current_app.config.get("DB_READ_TIMEOUT", settings.db_read_timeout),
             flask_host=settings.flask_host,
             flask_port=settings.flask_port,
             flask_debug=settings.flask_debug,
@@ -47,7 +48,7 @@ def get_connection():
             cursorclass=DictCursor,
             autocommit=True,
             connect_timeout=5,
-            read_timeout=5,
+            read_timeout=active_settings.db_read_timeout,
             write_timeout=5,
         )
     except pymysql.MySQLError as exc:

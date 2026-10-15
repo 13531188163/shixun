@@ -9,7 +9,8 @@
 
 ## 1. 契约范围
 
-本文件是 Flask 后端和未来 Vue 3 前端共同遵守的接口契约。本阶段只设计接口，不实现路由、Model、Repository 或 Service。
+本文件是 Flask 后端和 Vue 3 前端共同遵守的接口契约。温度分析接口在 Phase 2
+中按本契约实现；其余接口保持既有 URL、字段和响应层级不变。
 
 - Base URL：/api
 - JSON 字段：camelCase
@@ -434,9 +435,182 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：主要城市天气对比柱状图。
 - 数据可用状态：available。
 
-## 6. Air Quality
+## 6. Temperature Analysis
 
-### 6.1 获取最新空气质量
+温度分析接口只使用 `weather_data.max_temp`、`weather_data.min_temp`、
+`weather_data.date` 和 `weather_data.weather`。温度字段先在 SQL 中去除 `℃`
+并转换为数值；日期先按 `YYYY-MM-DD` 解析再排序，月度分组从该观测日期提取月份。
+省份、
+城市和区县均为可选参数，全部省略时表示全国范围。`startDate` 和 `endDate`
+为可选的历史观测日期边界，均包含在筛选范围内。
+
+### 6.1 可用温度观测日期
+
+- 接口名称：获取温度分析可用日期
+- Method：GET
+- URL：/api/temperature/dates
+- Query 参数：province、city、district。
+- 参数类型：string、string、string。
+- 是否必填：均否；全部省略时返回全国范围日期。
+- 参数约束：名称长度 1-50；区县必须随城市提供。
+- 数据来源表：weather_data.date。
+- 数据计算方式：按区域筛选，去重后返回数据库中实际存在的 YYYY-MM-DD 观测日期，按日期倒序排列，最多 1000 个。
+- 成功数据结构：`{"data": [date, ...], "meta": {"count": number}}`。
+- HTTP Status：200、400、500。
+- 前端对应模块：温度分析时间范围选择器。
+- 数据可用状态：available。
+
+### 6.2 区域平均温度
+
+- 接口名称：区域平均温度
+- Method：GET
+- URL：/api/temperature/average
+- Query 参数：province、city、district、startDate、endDate。
+- 参数类型：string、string、string、date、date。
+- 是否必填：均否。
+- 参数约束：名称长度 1-50；日期为 YYYY-MM-DD；startDate 不得晚于 endDate。
+- 数据来源表：weather_data.max_temp、weather_data.min_temp、weather_data.date。
+- 数据计算方式：在选定区域和日期范围内分别计算 max_temp、min_temp 的 AVG，
+  `avgTemp` 为两个平均值的算术平均；无法转换的温度不参与聚合。
+- 成功数据结构：`{"avgMaxTemp": number|null, "avgMinTemp": number|null, "avgTemp": number|null}`。
+- HTTP Status：200、400、404、500；筛选范围没有有效温度时返回 404。
+- 前端对应模块：温度分析平均温度指标卡。
+- 数据可用状态：available。
+
+### 6.3 历史最高最低温
+
+- 接口名称：历史最高最低温
+- Method：GET
+- URL：/api/temperature/extremes
+- Query 参数：province、city、district、startDate、endDate，约束同 6.1。
+- 数据来源表：weather_data.max_temp、weather_data.min_temp、weather_data.date。
+- 数据计算方式：按筛选范围对 max_temp 取最高值、对 min_temp 取最低值；并返回
+  对应观测日期。相同温度按日期倒序、id 升序稳定选择。
+- 成功数据结构：`{"maxTemperature": number|null, "maxDate": date|null, "minTemperature": number|null, "minDate": date|null}`。
+- HTTP Status：200、400、404、500；没有有效温度时返回 404。
+- 前端对应模块：温度分析历史最高、最低和温差指标卡。
+- 数据可用状态：available。
+
+### 6.4 近 30 天温度趋势
+
+- 接口名称：近 30 天温度趋势
+- Method：GET
+- URL：/api/temperature/trend
+- Query 参数：province、city、district、startDate、endDate，约束同 6.1。
+- 数据来源表：weather_data.max_temp、weather_data.min_temp、weather_data.date。
+- 数据计算方式：按解析后的 date 分组，取区域内 max_temp、min_temp 的日平均，
+  按日期倒序选最近 30 个观测日后以日期升序返回。
+- 成功数据结构：`[{"date": date, "maxTemp": number|null, "minTemp": number|null}]`。
+- 无数据时返回 `data: []`，HTTP Status：200、400、500。
+- 前端对应模块：近 30 天最高最低温折线图。
+- 数据可用状态：available（历史趋势，不是预报）。
+
+### 6.5 月度平均温度
+
+- 接口名称：月度平均温度
+- Method：GET
+- URL：/api/temperature/monthly
+- Query 参数：province、city、district、startDate、endDate，约束同 6.1。
+- 数据来源表：weather_data.date、weather_data.max_temp、weather_data.min_temp。
+- 数据计算方式：按解析后的月份分组，计算每条记录最高、最低温平均值后再求月平均；
+  只返回筛选范围内实际存在的月份，按 1-12 月排序，不用 0 填补缺失月份。
+- 成功数据结构：`[{"month": "1月", "avgTemp": number|null}]`。
+- 无数据时返回 `data: []`，HTTP Status：200、400、500。
+- 前端对应模块：月度平均温度折线图。
+- 数据可用状态：available。
+
+### 6.6 最近 7 天天气温度
+
+- 接口名称：最近 7 天天气温度
+- Method：GET
+- URL：/api/temperature/recent
+- Query 参数：province、city、district、startDate、endDate，约束同 6.1。
+- 数据来源表：weather_data.date、weather_data.weather、weather_data.max_temp、weather_data.min_temp。
+- 数据计算方式：按日期分组，返回筛选范围内最新 7 个观测日；最高、最低温为区域日平均。
+  当同日有多种天气描述时返回派生文本“区域多种天气”，不补造天气事实；结果按日期升序返回。
+- 成功数据结构：`[{"date": date, "weather": string|null, "maxTemp": number|null, "minTemp": number|null}]`。
+- 无数据时返回 `data: []`，HTTP Status：200、400、500。
+- 前端对应模块：最近 7 天天气温度卡片。
+- 数据可用状态：available。
+
+## 7. Rainfall Analysis
+
+降水分析接口只使用 `weather_data.total_precip`、`weather_data.date`、
+`weather_data.weather` 以及省、市、区县字段。`total_precip` 在 SQL 中清洗为数值；
+全部省份、城市和区县参数省略时表示全国范围。`startDate` 与 `endDate` 是包含边界的
+历史观测日期筛选条件。
+
+降水指标不把不同区县的毫米数直接相加。所有降水接口先按行政层级生成区域日值：
+区县 → 城市 → 省级 → 全国逐级取等权平均；核心累计值是区域日值跨日期的累计。
+
+### 7.1 可用降水观测日期
+
+- 接口名称：获取降水分析可用日期
+- Method：GET
+- URL：/api/rainfall/dates
+- Query 参数：province、city、district，均可选；全部省略时返回全国范围日期。
+- 数据来源表：weather_data.date。
+- 数据计算方式：按区域筛选、去重，返回实际存在的 YYYY-MM-DD 日期，按倒序排列，最多 1000 个。
+- 成功数据结构：`{"data": [date, ...], "meta": {"count": number}}`。
+- HTTP Status：200、400、500。
+- 前端对应模块：降水分析时间范围选择器。
+
+### 7.2 降水核心指标
+
+- 接口名称：区域降水核心指标
+- Method：GET
+- URL：/api/rainfall/core
+- Query 参数：province、city、district、startDate、endDate，均可选。
+- 数据来源表：weather_data.total_precip、weather_data.date。
+- 区域日值口径：原始表只有区县观测。先按 `province + city + district + date`
+  去重并取日均；城市日值取所属区县日值的平均，省级日值取所属城市日值的平均，
+  全国日值取所属省份日值的平均。这样每个下级行政区在同一天只贡献一个等权观测值。
+- 数据计算方式：核心指标对区域日值序列计算累计（`SUM`）、平均（`AVG`）和最大值（`MAX`）；
+  最大值日期按日期倒序稳定选择；降水天数统计区域日值大于 0 的实际观测日期数。
+  无法解析或为负的降水值不参与区域日值聚合。
+- 成功数据结构：`{"totalPrecip": number|null, "avgPrecip": number|null, "maxPrecip": number|null, "maxPrecipDate": date|null, "rainyDays": number}`。
+- HTTP Status：200、400、404、500；没有有效降水记录时返回 404。
+- 前端对应模块：降水核心指标卡片。
+
+### 7.3 最近 7 日降水详情
+
+- 接口名称：最近 7 日降水详情
+- Method：GET
+- URL：/api/rainfall/recent
+- Query 参数：province、city、district、startDate、endDate，约束同 7.2。
+- 数据来源表：weather_data.date、weather_data.total_precip、weather_data.weather。
+- 数据计算方式：先选取筛选范围内最新 7 个观测日期，再按上述区域日值口径计算降水量；同日有多种天气文本时返回派生文本“区域多种天气”。
+- 成功数据结构：`[{"date": date, "precip": number|null, "weather": string|null}]`，按日期升序返回。
+- HTTP Status：200、400、500。
+- 前端对应模块：最近 7 日降水卡片。
+
+### 7.4 近 30 天降水趋势
+
+- 接口名称：近 30 天降水趋势
+- Method：GET
+- URL：/api/rainfall/trend
+- Query 参数：province、city、district、startDate、endDate，约束同 7.2。
+- 数据来源表：weather_data.date、weather_data.total_precip。
+- 数据计算方式：选取筛选范围内最新 30 个观测日期，按上述区域日值口径计算并按日期升序返回。
+- 成功数据结构：`[{"date": date, "precip": number|null}]`。
+- HTTP Status：200、400、500；无数据时返回空数组。
+- 前端对应模块：近 30 天降水趋势图。
+
+### 7.5 降水等级分布
+
+- 接口名称：降水等级分布
+- Method：GET
+- URL：/api/rainfall/distribution
+- Query 参数：province、city、district、startDate、endDate，约束同 7.2。
+- 数据来源表：weather_data.date、weather_data.total_precip。
+- 数据计算方式：先按上述区域日值口径计算，再按固定边界分组：无降水（0）、小雨（大于 0 且小于 10）、中雨（10 至小于 25）、大雨（25 至小于 50）、暴雨（≥50）。降水值全部无效的日期不参与统计；没有记录的等级返回 0。
+- 成功数据结构：`[{"level": string, "count": number}]`，固定返回上述五个等级。
+- HTTP Status：200、400、500。
+- 前端对应模块：降水等级分布环形图。
+
+## 8. Air Quality
+
+### 8.1 获取最新空气质量
 
 - 接口名称：获取城市最新空气质量
 - Method：GET
@@ -483,7 +657,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：AQI 指标卡、空气质量概况。
 - 数据可用状态：available（AQI 与等级）；污染物明细 unavailable。
 
-### 6.2 空气质量排名
+### 8.2 空气质量排名
 
 - 接口名称：空气质量排名
 - Method：GET
@@ -530,7 +704,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：城市空气质量 TOP10。
 - 数据可用状态：available。
 
-### 6.3 空气质量等级分布
+### 8.3 空气质量等级分布
 
 - 接口名称：空气质量等级分布
 - Method：GET
@@ -570,9 +744,9 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：空气质量等级分布环图/饼图。
 - 数据可用状态：available。
 
-## 7. Dashboard
+## 9. Dashboard
 
-### 7.1 Dashboard 首屏概览
+### 9.1 Dashboard 首屏概览
 
 - 接口名称：Dashboard 概览
 - Method：GET
@@ -640,7 +814,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：Dashboard 首屏聚合；趋势、排名和分布仍调用独立接口。
 - 数据可用状态：partial。天气、AQI、基础数量可用；湿度、污染物、预警和健康建议不可用。
 
-### 7.2 省级 Dashboard 概览
+### 9.2 省级 Dashboard 概览
 
 - 接口名称：省级 Dashboard 概览
 - Method：GET
@@ -658,7 +832,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：全国地图省级点击后的中心概览、天气指标和省级趋势。
 - 数据可用状态：partial。省级天气聚合和可用 AQI 摘要可用；污染物、预警和健康建议不可用。
 
-## 8. 当前不提供的指标
+## 10. 当前不提供的指标
 
 以下参考图指标在 database/weather_data.sql 中没有可读取或可确定计算的字段，本阶段不定义正式响应字段：
 

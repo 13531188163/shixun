@@ -13,6 +13,7 @@ import {
   loadAdministrativeMap,
   mapSourceUrl,
 } from '../../utils/administrativeMap'
+import { mapRegion, setMapRegion } from '../../stores/regionStore'
 
 const props = defineProps({
   location: { type: Object, default: null },
@@ -69,7 +70,7 @@ function nodeFromFeature(feature) {
 }
 
 function businessFeature() {
-  const target = props.location?.district || props.location?.city || props.location?.province
+  const target = mapRegion.district || mapRegion.city || mapRegion.province
   if (!target) return null
   const exact = currentFeatures.value.find((feature) => featureName(feature) === target)
   if (exact) return exact
@@ -106,8 +107,10 @@ function areaPayload(node, path) {
 }
 
 function emitAreaSelection(node, path) {
+  const payload = areaPayload(node, path)
+  setMapRegion(payload)
   if (node.level === 'province') emit('province-select', node.name)
-  emit('area-select', areaPayload(node, path))
+  emit('area-select', payload)
 }
 
 function registerMap(adcode, geoJson) {
@@ -186,8 +189,10 @@ async function navigateTo(index) {
   const path = navigation.value.slice(0, index + 1)
   selectedAdcode.value = target.adcode === NATIONAL_ADCODE ? '' : target.adcode
   terminalMessage.value = ''
-  if (target.adcode === NATIONAL_ADCODE) emit('map-reset')
-  else emitAreaSelection(target, path)
+  if (target.adcode === NATIONAL_ADCODE) {
+    setMapRegion(areaPayload(target, path))
+    emit('map-reset')
+  } else emitAreaSelection(target, path)
   if (currentMap.value?.adcode === target.adcode) {
     navigation.value = path
     emitNavigation()
@@ -328,10 +333,11 @@ function buildOption() {
 
 async function initializeMap() {
   const root = navigation.value[0]
+  setMapRegion(areaPayload(root, [root]))
   await loadMapAt(root, [root], '')
 }
 
-watch(() => props.location?.province, async (province) => {
+watch(() => mapRegion.province, async (province) => {
   if (!province || !currentMap.value) return
   const pathProvince = navigation.value.find((item) => item.level === 'province')
   if (!pathProvince || comparableName(pathProvince.name) === comparableName(province)) return

@@ -8,20 +8,28 @@ defineProps({
 })
 
 defineEmits(['province-change', 'city-change', 'district-change'])
+
+const DIRECT_MUNICIPALITIES = new Set(['北京', '北京市', '上海', '上海市', '天津', '天津市', '重庆', '重庆市'])
+
+function provinceLabel(province) {
+  const name = String(province || '')
+  if (!DIRECT_MUNICIPALITIES.has(name)) return name
+  return name.endsWith('市') ? name : `${name}市`
+}
 </script>
 
 <template>
   <div class="location-selector">
     <span class="selector-label">数据地区</span>
     <label>
-      <span>省份</span>
+      <span>省级行政区</span>
       <select
         :value="selection.province"
         :disabled="loading"
         @change="$emit('province-change', $event.target.value)"
       >
         <option value="">请选择省份</option>
-        <option v-for="province in provinces" :key="province" :value="province">{{ province }}</option>
+        <option v-for="province in provinces" :key="province" :value="province">{{ provinceLabel(province) }}</option>
       </select>
     </label>
     <label>

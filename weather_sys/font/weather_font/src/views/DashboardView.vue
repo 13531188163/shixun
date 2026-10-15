@@ -22,13 +22,17 @@ import CenterOverview from '../components/dashboard/CenterOverview.vue'
 import AirQualityOverview from '../components/dashboard/AirQualityOverview.vue'
 import AirQualityRankingChart from '../components/dashboard/AirQualityRankingChart.vue'
 import AirQualityDistributionChart from '../components/dashboard/AirQualityDistributionChart.vue'
+import {
+  currentDate,
+  dataRegion,
+  setCurrentDate,
+  setDataRegion,
+} from '../stores/regionStore'
 
 const provinces = ref([])
 const cities = ref([])
 const districts = ref([])
 const availableDates = ref([])
-const selection = reactive({ province: '', city: '', district: '', scope: 'province' })
-const selectedDate = ref('')
 const health = ref(null)
 const healthError = ref('')
 
@@ -57,12 +61,20 @@ let requestVersion = 0
 let comparisonPoolPromise
 let sharedAirQualityPromise
 
+const DIRECT_MUNICIPALITIES = new Set(['北京', '北京市', '上海', '上海市', '天津', '天津市', '重庆', '重庆市'])
+
+function provinceLabel(province) {
+  const name = String(province || '')
+  if (!DIRECT_MUNICIPALITIES.has(name)) return name
+  return name.endsWith('市') ? name : `${name}市`
+}
+
 const loading = computed(() => locationLoading.value || payloadLoading.value)
 const basicStatistics = computed(() => dashboard.value?.basicStatistics || null)
 const cityComparisonDisplay = computed(() => cityComparison.value.slice(0, 6))
-const locationReady = computed(() => Boolean(selection.province))
-const isProvinceScope = computed(() => selection.scope === 'province' || !selection.city)
-const dataDate = computed(() => selectedDate.value || latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
+const locationReady = computed(() => Boolean(dataRegion.province))
+const isProvinceScope = computed(() => dataRegion.scope === 'province' || !dataRegion.city)
+const dataDate = computed(() => currentDate.value || latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
 const apiStatus = computed(() => {
   if (pageError.value) return '需要检查 API'
   if (healthError.value) return '健康检查失败'
@@ -84,9 +96,10 @@ function errorText(error, fallback) {
 }
 
 function buildLocationParams() {
-  const params = { province: selection.province, city: selection.city }
-  if (!selection.city) return { province: selection.province }
-  if (selection.district) params.district = selection.district
+  if (!dataRegion.province) return {}
+  const params = { province: dataRegion.province, city: dataRegion.city }
+  if (!dataRegion.city) return { province: dataRegion.province }
+  if (dataRegion.district) params.district = dataRegion.district
   return params
 }
 
@@ -103,9 +116,23 @@ function clearData() {
   errors.airQuality = ''
 }
 
+function resetDataSelection() {
+  ++requestVersion
+  setDataRegion({ province: '', city: '', district: '', scope: 'country' })
+  setCurrentDate('')
+  cities.value = []
+  districts.value = []
+  availableDates.value = []
+  comparisonPoolPromise = undefined
+  clearData()
+  pageError.value = ''
+  locationLoading.value = false
+  payloadLoading.value = false
+}
+
 async function comparisonCitiesFor(selectedCity) {
   if (!comparisonPoolPromise) {
-    const sampleProvinces = provinces.value.slice(0, 8).filter((province) => province !== selection.province)
+    const sampleProvinces = provinces.value.slice(0, 8).filter((province) => province !== dataRegion.province)
     comparisonPoolPromise = Promise.allSettled(
       sampleProvinces.map((province) => getCities({ province })),
     ).then((results) => results.flatMap((result) => (
@@ -140,21 +167,21 @@ async function ensureSharedAirQuality() {
 }
 
 async function loadSelectedData(version) {
-  if (!selection.province || version !== requestVersion) return
+  if (!dataRegion.province || version !== requestVersion) return
 
   payloadLoading.value = true
   const params = buildLocationParams()
-  const overviewParams = selectedDate.value ? { ...params, date: selectedDate.value } : params
-  const dateParams = selectedDate.value ? { date: selectedDate.value } : {}
+  const overviewParams = currentDate.value ? { ...params, date: currentDate.value } : params
+  const dateParams = currentDate.value ? { date: currentDate.value } : {}
   const provinceScope = isProvinceScope.value
   let comparisonCities = []
   if (provinceScope) {
     comparisonCities = cities.value.slice(0, 10)
   } else {
     try {
-      comparisonCities = await comparisonCitiesFor(selection.city)
+      comparisonCities = await comparisonCitiesFor(dataRegion.city)
     } catch {
-      comparisonCities = [selection.city]
+      comparisonCities = [dataRegion.city]
     }
   }
   if (version !== requestVersion) return
@@ -162,7 +189,7 @@ async function loadSelectedData(version) {
   const requestsToMake = provinceScope
     ? [
         getProvinceDashboardOverview(overviewParams),
-        getProvinceWeatherTrend({ province: selection.province, ...dateParams, days: 7 }),
+        getProvinceWeatherTrend({ province: dataRegion.province, ...dateParams, days: 7 }),
         comparisonCities.length
           ? getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams })
           : Promise.resolve({ data: [] }),
@@ -199,35 +226,37 @@ async function loadSelectedData(version) {
 }
 
 async function loadAvailableDates(version) {
-  if (!selection.province || version !== requestVersion) return
+  if (!dataRegion.province || version !== requestVersion) return
   try {
     const response = isProvinceScope.value
-      ? await getProvinceWeatherDates({ province: selection.province })
+      ? await getProvinceWeatherDates({ province: dataRegion.province })
       : await getWeatherDates(buildLocationParams())
     if (version !== requestVersion) return
     availableDates.value = Array.isArray(response.data) ? response.data : []
-    if (!availableDates.value.includes(selectedDate.value)) {
-      selectedDate.value = availableDates.value[0] || ''
+    if (!availableDates.value.includes(currentDate.value)) {
+      setCurrentDate(availableDates.value[0] || '')
     }
   } catch (error) {
     if (version !== requestVersion) return
     availableDates.value = []
-    selectedDate.value = ''
+    setCurrentDate('')
     if (!isNotFound(error)) pageError.value = errorText(error, '可用日期读取失败')
   }
 }
 
 async function loadDistrictsAndData(version) {
-  if (!selection.province || !selection.city || version !== requestVersion) return
+  if (!dataRegion.province || !dataRegion.city || version !== requestVersion) return
   try {
-    const response = await getDistricts({ province: selection.province, city: selection.city })
+    const response = await getDistricts({ province: dataRegion.province, city: dataRegion.city })
     if (version !== requestVersion) return
     districts.value = Array.isArray(response.data) ? response.data : []
-    if (!districts.value.includes(selection.district)) selection.district = ''
+    if (!districts.value.includes(dataRegion.district)) {
+      setDataRegion({ ...dataRegion, district: '' })
+    }
   } catch (error) {
     if (version !== requestVersion) return
     districts.value = []
-    selection.district = ''
+    setDataRegion({ ...dataRegion, district: '' })
     // A missing district list is a valid empty state; a server error remains visible.
     if (!isNotFound(error)) pageError.value = errorText(error, '区县列表读取失败')
   }
@@ -237,11 +266,8 @@ async function loadDistrictsAndData(version) {
 
 async function handleProvinceChange(province) {
   const version = ++requestVersion
-  selection.province = province
-  selection.city = ''
-  selection.district = ''
-  selection.scope = 'province'
-  selectedDate.value = ''
+  setDataRegion({ province, city: '', district: '', scope: province ? 'province' : 'country' })
+  setCurrentDate('')
   cities.value = []
   districts.value = []
   availableDates.value = []
@@ -275,84 +301,10 @@ async function handleProvinceChange(province) {
   }
 }
 
-const MUNICIPALITY_AD_CODES = new Set(['110000', '120000', '310000', '500000'])
-
-function locationNameVariants(value, kind) {
-  const text = String(value || '').trim()
-  if (!text) return []
-  const suffixes = kind === 'province'
-    ? ['特别行政区', '自治区', '省', '市']
-    : kind === 'city'
-      ? ['特别行政区', '自治区', '自治州', '地区', '盟', '市']
-      : ['特别行政区', '自治区', '自治州', '地区', '盟', '区', '县', '旗', '市']
-  const variants = [text]
-  suffixes.forEach((suffix) => {
-    if (text.endsWith(suffix) && text.length > suffix.length) variants.push(text.slice(0, -suffix.length))
-  })
-  return [...new Set(variants)]
-}
-
-function resolveLocationName(mapName, options, kind) {
-  const variants = locationNameVariants(mapName, kind)
-  if (!variants.length) return ''
-  const exact = options.find((option) => variants.includes(option))
-  if (exact) return exact
-  const normalized = new Set(variants.map((item) => locationNameVariants(item, kind).at(-1)))
-  return options.find((option) => normalized.has(locationNameVariants(option, kind).at(-1))) || ''
-}
-
-function provinceMapNode(area) {
-  return area?.path?.find((item) => item.level === 'province') || null
-}
-
-function municipalityArea(area) {
-  const provinceNode = provinceMapNode(area)
-  return MUNICIPALITY_AD_CODES.has(String(provinceNode?.adcode || ''))
-}
-
-function mapProvinceToApiName(mapProvince) {
-  return resolveLocationName(mapProvince, provinces.value, 'province') || String(mapProvince || '').trim()
-}
-
-async function handleMapAreaSelect(area) {
-  const province = mapProvinceToApiName(area?.province || provinceMapNode(area)?.name)
-  if (!province || !provinces.value.includes(province)) {
-    pageError.value = `地图区域“${area?.name || '--'}”暂无可查询的省份记录`
-    return
-  }
-
-  // 地图资源与后端位置列表独立加载；点击很快时先确保城市列表已经就绪。
-  if (selection.province !== province || !cities.value.length) {
-    await handleProvinceChange(province)
-  }
-  if (area?.level === 'province') return
-
-  const cityMapName = area?.city || (municipalityArea(area) ? province : area?.name)
-  const city = resolveLocationName(cityMapName, cities.value, 'city')
-  if (!city) {
-    pageError.value = `地图区域“${cityMapName || area?.name || '--'}”在数据库中暂无城市记录`
-    return
-  }
-
-  if (selection.city !== city || !districts.value.length || area?.level === 'city') {
-    await handleCityChange(city)
-  }
-  if (area?.level !== 'district') return
-
-  const district = resolveLocationName(area.district || area.name, districts.value, 'district')
-  if (!district) {
-    pageError.value = `区县“${area?.name || '--'}”在数据库中暂无天气记录`
-    return
-  }
-  await handleDistrictChange(district)
-}
-
 async function handleCityChange(city) {
   const version = ++requestVersion
-  selection.city = city
-  selection.district = ''
-  selection.scope = city ? 'city' : 'province'
-  selectedDate.value = ''
+  setDataRegion({ ...dataRegion, city, district: '', scope: city ? 'city' : 'province' })
+  setCurrentDate('')
   districts.value = []
   availableDates.value = []
   clearData()
@@ -387,8 +339,8 @@ async function handleCityChange(city) {
 
 async function handleDistrictChange(district) {
   const version = ++requestVersion
-  selection.district = district
-  selectedDate.value = ''
+  setDataRegion({ ...dataRegion, district })
+  setCurrentDate('')
   availableDates.value = []
   clearData()
   pageError.value = ''
@@ -406,7 +358,7 @@ async function handleDistrictChange(district) {
 
 async function handleDateChange(date) {
   const version = ++requestVersion
-  selectedDate.value = date
+  setCurrentDate(date)
   clearData()
   pageError.value = ''
   await loadSelectedData(version)
@@ -414,7 +366,13 @@ async function handleDateChange(date) {
 
 async function loadInitial() {
   pageError.value = ''
+  healthError.value = ''
+  provinces.value = []
+  resetDataSelection()
+  const version = requestVersion
+  payloadLoading.value = true
   const [healthResult, provincesResult] = await Promise.allSettled([getHealth(), getProvinces()])
+  if (version !== requestVersion) return
   if (healthResult.status === 'fulfilled') health.value = healthResult.value.data || null
   else healthError.value = healthResult.reason?.message || '健康检查失败'
   if (provincesResult.status !== 'fulfilled') {
@@ -428,7 +386,11 @@ async function loadInitial() {
     payloadLoading.value = false
     return
   }
-  await handleProvinceChange(provinces.value[0])
+  await ensureSharedAirQuality()
+  if (version === requestVersion) {
+    locationLoading.value = false
+    payloadLoading.value = false
+  }
 }
 
 onMounted(loadInitial)
@@ -436,46 +398,59 @@ onMounted(loadInitial)
 
 <template>
   <main class="dashboard-shell">
-    <DashboardHeader :location="dashboard?.location || selection" :data-date="dataDate" :status="apiStatus" />
+    <DashboardHeader :location="dataRegion" :data-date="dataDate" :status="apiStatus">
+      <template #filters>
+        <div class="header-selection-layout">
+          <div class="selection-controls" aria-label="区域筛选条件">
+            <span class="selection-controls-title">区域筛选</span>
+            <label class="selection-level-field">
+              <span>区域级</span>
+              <select disabled>
+                <option v-if="!dataRegion.province">全国汇总</option>
+                <option v-else-if="!dataRegion.city">省级汇总（选择城市后下钻）</option>
+                <option v-else>城市级</option>
+              </select>
+            </label>
+            <label>
+              <span>省级行政区</span>
+              <select :value="dataRegion.province" :disabled="loading || !provinces.length" @change="handleProvinceChange($event.target.value)">
+                <option value="">全国</option>
+                <option v-for="province in provinces" :key="province" :value="province">{{ provinceLabel(province) }}</option>
+              </select>
+            </label>
+            <label>
+              <span>城市</span>
+              <select :value="dataRegion.city" :disabled="loading || !dataRegion.province || !cities.length" @change="handleCityChange($event.target.value)">
+                <option value="">全部城市</option>
+                <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
+              </select>
+            </label>
+            <label>
+              <span>区县</span>
+              <select :value="dataRegion.district" :disabled="loading || !dataRegion.city || !districts.length" @change="handleDistrictChange($event.target.value)">
+                <option value="">全部区县</option>
+                <option v-for="district in districts" :key="district" :value="district">{{ district }}</option>
+              </select>
+            </label>
+            <label>
+              <span>数据日期</span>
+              <select :value="currentDate" :disabled="loading || !availableDates.length" @change="handleDateChange($event.target.value)">
+                <option v-if="!availableDates.length" value="">选择区域后可用</option>
+                <option v-for="date in availableDates" :key="date" :value="date">{{ date }}</option>
+              </select>
+            </label>
+            <span class="selection-caption">共 {{ availableDates.length }} 个可用观测日期</span>
+          </div>
+          <div class="toolbar-summary">
+            <span :class="['api-status', { offline: pageError || healthError }]" aria-live="polite"><i />{{ apiStatus }}</span>
+            <span v-if="locationReady">{{ dataRegion.province }}<template v-if="dataRegion.city"> / {{ dataRegion.city }}</template><template v-else> / 省级汇总</template><template v-if="dataRegion.district"> / {{ dataRegion.district }}</template></span>
+            <span v-else>全国汇总</span>
+          </div>
+        </div>
+      </template>
+    </DashboardHeader>
 
     <div class="dashboard-content">
-      <div class="dashboard-toolbar">
-        <div class="map-interaction-hint">
-          <span class="selector-label">全国地图</span>
-          <span>点击省份查看省级汇总，再按需选择城市、区县和固定日期</span>
-          <span v-if="dataDate" class="fixed-date">固定数据日期：{{ dataDate }}</span>
-        </div>
-        <div class="toolbar-summary">
-          <span :class="['api-status', { offline: pageError || healthError }]" aria-live="polite"><i />{{ apiStatus }}</span>
-          <span v-if="locationReady">{{ selection.province }}<template v-if="selection.city"> / {{ selection.city }}</template><template v-else> / 省级汇总</template><template v-if="selection.district"> / {{ selection.district }}</template></span>
-        </div>
-      </div>
-
-      <div v-if="locationReady" class="selection-controls" aria-label="地图选中地区的详细条件">
-        <span class="selection-controls-title">地图选中后细化</span>
-        <label>
-          <span>城市</span>
-          <select :value="selection.city" :disabled="loading" @change="handleCityChange($event.target.value)">
-            <option value="">省级汇总（选择城市后下钻）</option>
-            <option v-for="city in cities" :key="city" :value="city">{{ city }}</option>
-          </select>
-        </label>
-        <label>
-          <span>区县</span>
-          <select :value="selection.district" :disabled="loading || !selection.city || !districts.length" @change="handleDistrictChange($event.target.value)">
-            <option value="">全市代表记录</option>
-            <option v-for="district in districts" :key="district" :value="district">{{ district }}</option>
-          </select>
-        </label>
-        <label>
-          <span>数据日期</span>
-          <select :value="selectedDate" :disabled="loading || !availableDates.length" @change="handleDateChange($event.target.value)">
-            <option v-for="date in availableDates" :key="date" :value="date">{{ date }}</option>
-          </select>
-        </label>
-        <span class="selection-caption">共 {{ availableDates.length }} 个可用观测日期</span>
-      </div>
-
       <p v-if="pageError" class="dashboard-alert" role="alert">{{ pageError }}</p>
 
       <div class="dashboard-grid">
@@ -503,14 +478,13 @@ onMounted(loadInitial)
         <section class="dashboard-column center-column" aria-label="区域数据概览">
           <DashboardPanel title="区域数据概览" subtitle="dashboard/overview · 省级或城市真实 API 聚合">
             <CenterOverview
-              :location="dashboard?.location"
+              :location="dataRegion"
               :weather="latestWeather"
               :air-quality="latestAirQuality"
               :air-quality-summary="dashboard?.airQualitySummary"
               :statistics="basicStatistics"
               :loading="loading"
               :error="errors.overview"
-              @area-select="handleMapAreaSelect"
             />
           </DashboardPanel>
         </section>
@@ -520,7 +494,7 @@ onMounted(loadInitial)
             <AirQualityOverview
               :air-quality="latestAirQuality"
               :air-quality-summary="dashboard?.airQualitySummary"
-              :location="selection"
+              :location="dataRegion"
               :loading="loading"
               :error="errors.airQuality"
             />
@@ -548,51 +522,53 @@ onMounted(loadInitial)
   border-radius: 7px;
 }
 
-.toolbar-summary {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 11px;
-  color: var(--text-muted);
-  font-size: 11px;
-  text-align: right;
-}
-
-.map-interaction-hint {
+.header-selection-layout {
   display: flex;
   min-width: 0;
+  width: 100%;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  color: var(--text-muted);
-  font-size: 12px;
+  gap: 14px;
+  padding: 7px 13px;
+  background: linear-gradient(90deg, rgb(6 42 81 / 92%), rgb(4 28 61 / 84%));
+  border: 1px solid rgb(35 143 211 / 58%);
+  border-radius: 6px;
+  box-shadow: inset 0 0 16px rgb(30 132 204 / 10%), 0 5px 16px rgb(0 8 26 / 18%);
 }
 
-.map-interaction-hint .selector-label {
-  color: var(--accent-cyan);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.toolbar-summary {
+  display: flex;
+  min-width: 142px;
+  align-items: flex-end;
+  flex-direction: column;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .selection-controls {
   display: flex;
+  min-width: 0;
+  flex: 1;
   align-items: center;
   flex-wrap: wrap;
-  gap: 9px 12px;
-  margin: 0 0 16px;
-  padding: 10px 13px;
-  background: rgb(11 37 76 / 58%);
-  border: 1px solid var(--color-panel-line);
-  border-radius: 8px;
+  gap: 7px 13px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 .selection-controls-title {
   color: var(--accent-cyan);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .selection-controls label {
@@ -601,19 +577,23 @@ onMounted(loadInitial)
   gap: 6px;
   color: var(--text-muted);
   font-size: 11px;
+  white-space: nowrap;
 }
 
 .selection-controls select {
-  min-width: 112px;
-  max-width: 190px;
-  padding: 6px 25px 6px 9px;
+  min-width: 118px;
+  max-width: 205px;
+  height: 32px;
+  padding: 5px 26px 5px 9px;
   color: var(--text-primary);
   font: inherit;
-  background: #0a2852;
-  border: 1px solid rgb(45 151 216 / 55%);
-  border-radius: 5px;
+  background: linear-gradient(180deg, #0b315f, #08254b);
+  border: 1px solid rgb(45 151 216 / 68%);
+  border-radius: 4px;
   outline: none;
 }
+
+.selection-level-field select { min-width: 188px; }
 
 .selection-controls select:focus {
   border-color: var(--accent-cyan);
@@ -621,19 +601,14 @@ onMounted(loadInitial)
 }
 
 .selection-controls select:disabled {
-  cursor: wait;
+  cursor: not-allowed;
   opacity: 0.65;
 }
 
 .selection-caption {
   color: var(--text-muted);
   font-size: 10px;
-}
-
-.fixed-date {
-  padding-left: 10px;
-  color: var(--text-secondary);
-  border-left: 1px solid var(--color-panel-line);
+  white-space: nowrap;
 }
 
 .api-status {
@@ -656,21 +631,16 @@ onMounted(loadInitial)
 }
 
 @media (max-width: 680px) {
-  .map-interaction-hint {
-    align-items: flex-start;
+  .header-selection-layout {
+    align-items: stretch;
     flex-direction: column;
-    gap: 5px;
-  }
-
-  .fixed-date {
-    padding-top: 5px;
-    padding-left: 0;
-    border-top: 1px solid var(--color-panel-line);
-    border-left: 0;
+    gap: 8px;
   }
 
   .toolbar-summary {
     width: 100%;
+    min-width: 0;
+    align-items: flex-start;
     justify-content: flex-start;
     text-align: left;
   }

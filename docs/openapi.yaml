@@ -3,7 +3,8 @@ info:
   title: weatherdemo Weather and Air Quality API
   version: 1.0.0
   description: >
-    weatherdemo Phase 1 API contract. The database is the source of truth;
+    weatherdemo API contract, including historical temperature and rainfall
+    analysis endpoints. The database is the source of truth;
     dashboard-reference.png is only a UI reference. latest means the newest
     record available in the historical database and does not mean realtime.
 servers:
@@ -16,6 +17,10 @@ tags:
     description: Province, city and district selectors
   - name: Weather
     description: Historical weather records and comparisons
+  - name: Temperature Analysis
+    description: Historical temperature averages, extremes and trends
+  - name: Rainfall Analysis
+    description: Historical precipitation indicators, trends and levels
   - name: Air Quality
     description: AQI snapshots, ranking and distribution
   - name: Dashboard
@@ -184,6 +189,212 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/temperature/dates:
+    get:
+      tags: [Temperature Analysis]
+      summary: List available temperature observation dates
+      description: Returns actual weather_data dates for the selected location; when all location parameters are omitted, dates are aggregated nationally.
+      operationId: getTemperatureDates
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/WeatherDatesSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/temperature/average:
+    get:
+      tags: [Temperature Analysis]
+      summary: Get area average temperatures
+      description: Calculates average maximum and minimum temperatures from historical weather_data rows.
+      operationId: getTemperatureAverage
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/TemperatureAverageSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/temperature/extremes:
+    get:
+      tags: [Temperature Analysis]
+      summary: Get historical temperature extremes
+      operationId: getTemperatureExtremes
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/TemperatureExtremesSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/temperature/trend:
+    get:
+      tags: [Temperature Analysis]
+      summary: Get the latest 30 observed temperature dates
+      description: Returns area-average maximum and minimum temperatures, not a forecast.
+      operationId: getTemperatureTrend
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/TemperatureTrendSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/temperature/monthly:
+    get:
+      tags: [Temperature Analysis]
+      summary: Get observed monthly average temperatures
+      operationId: getTemperatureMonthly
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/TemperatureMonthlySuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/temperature/recent:
+    get:
+      tags: [Temperature Analysis]
+      summary: Get the latest 7 observed temperature dates
+      operationId: getRecentTemperature
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/TemperatureRecentSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/rainfall/dates:
+    get:
+      tags: [Rainfall Analysis]
+      summary: List available rainfall observation dates
+      operationId: getRainfallDates
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/WeatherDatesSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/rainfall/core:
+    get:
+      tags: [Rainfall Analysis]
+      summary: Get regional rainfall indicators
+      description: Aggregates district observations into a hierarchy-aware regional daily average before calculating the indicators.
+      operationId: getRainfallCore
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/RainfallCoreSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/rainfall/recent:
+    get:
+      tags: [Rainfall Analysis]
+      summary: Get rainfall for the latest 7 observation dates
+      description: Returns recent values from the hierarchy-aware regional daily precipitation series.
+      operationId: getRecentRainfall
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/RainfallRecentSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/rainfall/trend:
+    get:
+      tags: [Rainfall Analysis]
+      summary: Get rainfall trend for the latest 30 observation dates
+      description: Returns the hierarchy-aware regional daily precipitation series, not a sum of all child-region rows.
+      operationId: getRainfallTrend
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/RainfallTrendSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/rainfall/distribution:
+    get:
+      tags: [Rainfall Analysis]
+      summary: Count observation dates by rainfall level
+      operationId: getRainfallDistribution
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/RainfallDistributionSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
   /api/air-quality/latest:
     get:
       tags: [Air Quality]
@@ -299,6 +510,16 @@ components:
         minLength: 1
         maxLength: 50
       example: 北京
+    CityOptional:
+      name: city
+      in: query
+      required: false
+      description: Normalized city name or a registered raw alias; omit for province or national scope.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 50
+      example: 济南
     DistrictOptional:
       name: district
       in: query
@@ -314,6 +535,26 @@ components:
       in: query
       required: false
       description: Fixed observed date in the database; when omitted, the newest available date is selected.
+      schema:
+        type: string
+        format: date
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+      example: 2026-05-22
+    StartDateOptional:
+      name: startDate
+      in: query
+      required: false
+      description: Inclusive historical observation start date in YYYY-MM-DD format.
+      schema:
+        type: string
+        format: date
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+      example: 2026-04-23
+    EndDateOptional:
+      name: endDate
+      in: query
+      required: false
+      description: Inclusive historical observation end date in YYYY-MM-DD format.
       schema:
         type: string
         format: date
@@ -519,6 +760,91 @@ components:
         minTemp:
           type: number
           nullable: true
+    TemperatureAverage:
+      type: object
+      required: [avgMaxTemp, avgMinTemp, avgTemp]
+      properties:
+        avgMaxTemp:
+          type: number
+          format: float
+          nullable: true
+        avgMinTemp:
+          type: number
+          format: float
+          nullable: true
+        avgTemp:
+          type: number
+          format: float
+          nullable: true
+    TemperatureExtremes:
+      type: object
+      required: [maxTemperature, maxDate, minTemperature, minDate]
+      properties:
+        maxTemperature:
+          type: number
+          format: float
+          nullable: true
+        maxDate:
+          type: string
+          format: date
+          nullable: true
+        minTemperature:
+          type: number
+          format: float
+          nullable: true
+        minDate:
+          type: string
+          format: date
+          nullable: true
+    TemperatureTrend:
+      type: object
+      required: [date, maxTemp, minTemp]
+      properties:
+        date: {type: string, format: date}
+        maxTemp: {type: number, nullable: true}
+        minTemp: {type: number, nullable: true}
+    TemperatureMonthly:
+      type: object
+      required: [month, avgTemp]
+      properties:
+        month: {type: string, pattern: '^(1[0-2]|[1-9])月$'}
+        avgTemp: {type: number, nullable: true}
+    TemperatureRecent:
+      type: object
+      required: [date, weather, maxTemp, minTemp]
+      properties:
+        date: {type: string, format: date}
+        weather: {type: string, nullable: true}
+        maxTemp: {type: number, nullable: true}
+        minTemp: {type: number, nullable: true}
+    RainfallCore:
+      type: object
+      required: [totalPrecip, avgPrecip, maxPrecip, maxPrecipDate, rainyDays]
+      properties:
+        totalPrecip: {type: number, nullable: true}
+        avgPrecip: {type: number, nullable: true}
+        maxPrecip: {type: number, nullable: true}
+        maxPrecipDate: {type: string, format: date, nullable: true}
+        rainyDays: {type: integer, minimum: 0}
+    RainfallRecent:
+      type: object
+      required: [date, precip, weather]
+      properties:
+        date: {type: string, format: date}
+        precip: {type: number, nullable: true}
+        weather: {type: string, nullable: true}
+    RainfallTrend:
+      type: object
+      required: [date, precip]
+      properties:
+        date: {type: string, format: date}
+        precip: {type: number, nullable: true}
+    RainfallLevel:
+      type: object
+      required: [level, count]
+      properties:
+        level: {type: string, enum: [无降水, 小雨, 中雨, 大雨, 暴雨]}
+        count: {type: integer, minimum: 0}
     AirQuality:
       type: object
       required: [city, province, aqi, status, createdAt]
@@ -754,6 +1080,149 @@ components:
                 properties:
                   requested: {type: integer, minimum: 1, maximum: 10}
                   returned: {type: integer, minimum: 0, maximum: 10}
+    TemperatureAverageSuccess:
+      description: Area-average historical temperatures.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                $ref: '#/components/schemas/TemperatureAverage'
+    TemperatureExtremesSuccess:
+      description: Historical maximum and minimum temperatures with observed dates.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                $ref: '#/components/schemas/TemperatureExtremes'
+    TemperatureTrendSuccess:
+      description: Up to 30 observed date-level temperature rows.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items: {$ref: '#/components/schemas/TemperatureTrend'}
+              meta:
+                type: object
+                required: [days]
+                properties:
+                  days: {type: integer, enum: [30]}
+    TemperatureMonthlySuccess:
+      description: Observed monthly average temperature rows.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items: {$ref: '#/components/schemas/TemperatureMonthly'}
+              meta:
+                type: object
+                required: [groupBy]
+                properties:
+                  groupBy: {type: string, enum: [month]}
+    TemperatureRecentSuccess:
+      description: Up to 7 observed date-level temperature rows with weather descriptions.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items: {$ref: '#/components/schemas/TemperatureRecent'}
+              meta:
+                type: object
+                required: [days]
+                properties:
+                  days: {type: integer, enum: [7]}
+    RainfallCoreSuccess:
+      description: Hierarchy-aware regional daily-average rainfall totals and indicators.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data: {$ref: '#/components/schemas/RainfallCore'}
+    RainfallRecentSuccess:
+      description: Up to 7 observed daily rows using the hierarchy-aware regional daily average.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items: {$ref: '#/components/schemas/RainfallRecent'}
+              meta:
+                type: object
+                required: [days]
+                properties:
+                  days: {type: integer, enum: [7]}
+    RainfallTrendSuccess:
+      description: Up to 30 observed daily rows using the hierarchy-aware regional daily average.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items: {$ref: '#/components/schemas/RainfallTrend'}
+              meta:
+                type: object
+                required: [days]
+                properties:
+                  days: {type: integer, enum: [30]}
+    RainfallDistributionSuccess:
+      description: Fixed rainfall levels counted by observed date after classifying the hierarchy-aware regional daily average.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, meta]
+            properties:
+              code: {type: integer, enum: [200]}
+              message: {type: string, example: success}
+              data:
+                type: array
+                items: {$ref: '#/components/schemas/RainfallLevel'}
+              meta:
+                type: object
+                required: [groupBy]
+                properties:
+                  groupBy: {type: string, enum: [rainfallLevel]}
     AirQualitySuccess:
       description: Latest AQI snapshot.
       content:

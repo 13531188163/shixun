@@ -53,6 +53,9 @@ class Settings:
     flask_port: int
     flask_debug: bool
     cors_origins: Tuple[str, ...]
+    # Aggregate queries over the historical weather table can legitimately
+    # take longer than the PyMySQL default on an unindexed installation.
+    db_read_timeout: int = 30
 
     @classmethod
     def from_environment(cls) -> "Settings":
@@ -66,6 +69,7 @@ class Settings:
             flask_port=_env_int("FLASK_PORT", 5000),
             flask_debug=_env_bool("FLASK_DEBUG", False),
             cors_origins=_env_origins("CORS_ORIGINS"),
+            db_read_timeout=_env_int("DB_READ_TIMEOUT", 30),
         )
 
 

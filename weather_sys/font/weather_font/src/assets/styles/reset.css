@@ -19,3 +19,14 @@ select,
 textarea {
   font: inherit;
 }
+
+/* Native select popups use a light menu on Windows; keep option text readable. */
+select option {
+  color: #102849;
+  background-color: #ffffff;
+}
+
+select option:checked {
+  color: #ffffff;
+  background-color: #4c7da8;
+}
