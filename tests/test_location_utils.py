@@ -18,6 +18,11 @@ class LocationUtilsTests(unittest.TestCase):
         self.assertEqual(normalize_province_name("广东省"), "广东")
         self.assertEqual(normalize_province_name("浙江省"), "浙江")
         self.assertEqual(normalize_province_name("重庆市"), "重庆")
+        self.assertEqual(normalize_province_name("内蒙古自治区"), "内蒙古")
+        self.assertEqual(normalize_province_name("广西壮族自治区"), "广西")
+        self.assertEqual(normalize_province_name("宁夏回族自治区"), "宁夏")
+        self.assertEqual(normalize_province_name("新疆维吾尔自治区"), "新疆")
+        self.assertEqual(normalize_province_name("西藏自治区"), "西藏")
 
     def test_unknown_values_are_preserved(self):
         self.assertEqual(normalize_city_name("锡林郭勒盟"), "锡林郭勒盟")
@@ -33,6 +38,12 @@ class LocationUtilsTests(unittest.TestCase):
         self.assertIn("广安", city_query_values("广安市"))
         self.assertIn("阿坝藏族羌族自治州", city_query_values("阿坝"))
         self.assertIn("凉山彝族自治州", city_query_values("凉山"))
+
+    def test_autonomous_region_query_aliases_include_full_name(self):
+        self.assertEqual(province_query_values("内蒙古"), ("内蒙古", "内蒙古自治区"))
+        self.assertEqual(province_query_values("宁夏"), ("宁夏", "宁夏回族自治区"))
+        self.assertIn("广西壮族自治区", province_query_values("广西"))
+        self.assertIn("新疆维吾尔自治区", province_query_values("新疆"))
 
 
 if __name__ == "__main__":

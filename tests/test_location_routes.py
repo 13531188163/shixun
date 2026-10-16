@@ -27,6 +27,13 @@ class LocationRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.get_json()["message"], "province not found")
 
+    @patch("weather_sys.backend.routes.location_routes.weather_service.list_cities", return_value=["呼和浩特"])
+    def test_cities_accepts_autonomous_region_alias(self, service):
+        response = self.client.get("/api/locations/cities?province=内蒙古")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["data"], ["呼和浩特"])
+        service.assert_called_once_with(province="内蒙古")
+
     @patch("weather_sys.backend.routes.location_routes.weather_service.list_districts", return_value=["东城区"])
     def test_districts_success(self, service):
         response = self.client.get("/api/locations/districts?province=北京&city=北京")
