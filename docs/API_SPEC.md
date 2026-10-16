@@ -875,3 +875,13 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - `GET /api/air-quality/levels?province=`：按 AQI 数值划分优（0-50）、良（51-100）、轻度污染（101-150）、中度污染（151-200）、重度污染（201-300）、严重污染（>300），返回数量和占比。
 
 数据源没有 PM2.5、PM10、O3 等字段，城市详情明确显示“暂无该字段”。
+
+## 9.2 区域对比分析
+
+区域对比接口只使用真实 `weather_data` 历史记录和独立的 `air_quality_data` 固定快照。
+
+- `GET /api/comparison/locations`：返回 weather_data 中可用的 `{key, province, city}` 城市组合。
+- `GET /api/comparison?cities=省份::城市,省份::城市&startDate=&endDate=`：最多比较 4 个不重复的省份+城市组合。天气数据先按区县和日期聚合为城市日值，再仅使用各城市共同有效日期计算指标；AQI 从固定快照单独读取，不参与天气日期范围计算。
+- 返回 `weatherPeriod`、`comparableDates`、`dataCoverage`、`cities`；每个城市包含 `weatherMetrics`、`monthlyPrecip` 和 `aqiSnapshot`。
+- `avgTempEstimate` 是最高温和最低温的中间值估算；`totalPrecip` 是共同日期内城市区域日均降水累计值；AQI 的 `createdAt` 是快照入库时间，不代表实际观测时间。
+- 缺失天气指标或 AQI 使用 null，前端显示“暂无数据”；不生成月份、日期或 AQI 模拟值。

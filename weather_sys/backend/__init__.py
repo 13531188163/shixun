@@ -12,6 +12,7 @@ from werkzeug.exceptions import HTTPException
 
 from .config import Settings, settings
 from .routes.air_quality_routes import air_quality_bp
+from .routes.comparison_routes import comparison_bp
 from .routes.admin_routes import admin_bp
 from .routes.dashboard_routes import dashboard_bp
 from .routes.health_routes import health_bp
@@ -57,6 +58,7 @@ def create_app(app_settings: Optional[Settings] = None) -> Flask:
     app.register_blueprint(wind_bp, url_prefix="/api/wind")
     app.register_blueprint(rainfall_bp, url_prefix="/api/rainfall")
     app.register_blueprint(air_quality_bp, url_prefix="/api/air-quality")
+    app.register_blueprint(comparison_bp, url_prefix="/api/comparison")
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
     _register_frontend_dashboard(app)
     _register_error_handlers(app)

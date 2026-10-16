@@ -25,6 +25,8 @@ tags:
     description: Historical wind speed indicators, trends and Beaufort levels
   - name: Air Quality
     description: AQI snapshots, ranking and distribution
+  - name: Comparison
+    description: Multi-city historical weather comparison with independent AQI snapshots
   - name: Dashboard
     description: First-screen aggregate data
 paths:
@@ -188,6 +190,37 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/WeatherComparisonSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/comparison/locations:
+    get:
+      tags: [Comparison]
+      summary: List weather comparison city references
+      operationId: listComparisonLocations
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/comparison:
+    get:
+      tags: [Comparison]
+      summary: Compare two to four real weather locations
+      description: Weather metrics use common valid historical dates and regional daily aggregation. AQI is an independent fixed snapshot.
+      operationId: compareLocations
+      parameters:
+        - $ref: '#/components/parameters/Cities'
+        - name: startDate
+          in: query
+          schema: {type: string, format: date}
+        - name: endDate
+          in: query
+          schema: {type: string, format: date}
+      responses:
+        '200':
+          $ref: '#/components/responses/SuccessResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
