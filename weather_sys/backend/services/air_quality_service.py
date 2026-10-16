@@ -164,6 +164,91 @@ def get_province_air_quality_summary(province: str) -> dict[str, Any] | None:
     }
 
 
+def classify_aqi(value: Any) -> str | None:
+    """Classify numeric AQI using the page's fixed six ranges."""
+
+    number = parse_aqi(value)
+    if number is None or number < 0:
+        return None
+    if number <= 50:
+        return "优"
+    if number <= 100:
+        return "良"
+    if number <= 150:
+        return "轻度污染"
+    if number <= 200:
+        return "中度污染"
+    if number <= 300:
+        return "重度污染"
+    return "严重污染"
+
+
+def _numeric(value: Any) -> int | None:
+    return parse_aqi(value)
+
+
+def get_air_quality_overview(province: str | None = None) -> dict[str, Any]:
+    province_value = _optional_text(province, "province")
+    row = air_quality_model.get_air_quality_overview(province=province_value)
+    average = row.get("average_aqi")
+    try:
+        average = float(average) if average is not None else None
+        if average is not None and average.is_integer():
+            average = int(average)
+    except (TypeError, ValueError, OverflowError):
+        average = None
+    return {
+        "cityCount": int(row.get("city_count") or 0),
+        "averageAqi": average,
+        "goodCityCount": int(row.get("good_city_count") or 0),
+        "pollutedCityCount": int(row.get("polluted_city_count") or 0),
+        "createdAt": _format_timestamp(row.get("latest_snapshot")),
+    }
+
+
+def _api_snapshot(row: dict[str, Any]) -> dict[str, Any]:
+    aqi = _numeric(row.get("aqi"))
+    return {
+        "city": normalize_city_name(row.get("city")),
+        "province": normalize_province_name(row.get("province")),
+        "aqi": aqi,
+        "status": classify_aqi(aqi) or (row.get("status").strip() if isinstance(row.get("status"), str) else None),
+        "createdAt": _format_timestamp(row.get("created_at")),
+    }
+
+
+def get_air_quality_province_summaries() -> list[dict[str, Any]]:
+    result = []
+    for row in air_quality_model.get_air_quality_province_summaries():
+        average = row.get("average_aqi")
+        try:
+            average = float(average) if average is not None else None
+            if average is not None and average.is_integer():
+                average = int(average)
+        except (TypeError, ValueError, OverflowError):
+            average = None
+        result.append({
+            "province": normalize_province_name(row.get("province")),
+            "cityCount": int(row.get("city_count") or 0),
+            "averageAqi": average,
+            "status": classify_aqi(average),
+            "createdAt": _format_timestamp(row.get("latest_snapshot")),
+        })
+    return result
+
+
+def get_air_quality_city_rows(province: str | None = None) -> list[dict[str, Any]]:
+    return [_api_snapshot(row) for row in air_quality_model.get_air_quality_city_rows(province=_optional_text(province, "province"))]
+
+
+def get_air_quality_level_distribution(province: str | None = None) -> list[dict[str, Any]]:
+    rows = air_quality_model.get_air_quality_level_distribution(province=_optional_text(province, "province"))
+    counts = {str(row.get("level")): int(row.get("count") or 0) for row in rows}
+    levels = ("优", "良", "轻度污染", "中度污染", "重度污染", "严重污染")
+    total = sum(counts.get(level, 0) for level in levels)
+    return [{"status": level, "count": counts.get(level, 0), "percentage": round(counts.get(level, 0) / total * 100, 1) if total else 0} for level in levels]
+
+
 def get_all_air_quality(
     limit: int = 1000,
     city: str | None = None,

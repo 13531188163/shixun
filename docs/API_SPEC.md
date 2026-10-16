@@ -863,3 +863,15 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - `GET /api/wind/distribution`：返回 0–9+ 级的 `{level,name,range,count,percentage}`，计数总和等于有效区域日均平均风速观测日数。
 
 所有接口使用统一响应封装和 `province/city/district/startDate/endDate` 参数；无有效数据的核心接口返回 404。
+
+
+## 9.1 空气质量分析页面扩展接口
+
+空气质量页面只读取 `air_quality_data` 的最新城市快照。同一省份+城市存在多条记录时，按 `created_at DESC, id DESC` 选择一条；表没有天气观测日期，因此页面不提供 AQI 历史趋势，也不随天气日期变化。
+
+- `GET /api/air-quality/overview?province=`：返回有效城市数、城市样本平均 AQI、优良城市数、轻度污染及以上城市数和最新快照时间。
+- `GET /api/air-quality/provinces`：返回省级城市数、城市样本平均 AQI、AQI 等级和快照时间，供省级地图着色；无快照省份不伪造数据。
+- `GET /api/air-quality/cities?province=`：返回去重后的城市快照。
+- `GET /api/air-quality/levels?province=`：按 AQI 数值划分优（0-50）、良（51-100）、轻度污染（101-150）、中度污染（151-200）、重度污染（201-300）、严重污染（>300），返回数量和占比。
+
+数据源没有 PM2.5、PM10、O3 等字段，城市详情明确显示“暂无该字段”。

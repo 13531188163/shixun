@@ -165,3 +165,83 @@ def get_province_air_quality_summary(province: str) -> dict[str, Any] | None:
             cursor.execute(sql, params)
             row = cursor.fetchone()
             return row if row and row.get("city_count") else None
+
+
+def _latest_snapshot_sql(*, province: str | None = None, city: str | None = None) -> tuple[str, list[str]]:
+    """Return a deduplicated latest city snapshot query and its parameters."""
+
+    clauses, params = _location_filters(province=province, city=city)
+    clauses = [clause.replace("city IN", "a.city IN").replace("province IN", "a.province IN") for clause in clauses]
+    clauses.append("TRIM(a.aqi) REGEXP '^[0-9]+$'")
+    where_sql = " AND ".join(clauses)
+    return (
+        f"SELECT a.id, a.city, a.province, a.aqi, a.status, a.created_at "
+        "FROM air_quality_data AS a "
+        f"WHERE {where_sql} AND NOT EXISTS ("
+        "SELECT 1 FROM air_quality_data AS newer "
+        "WHERE newer.city = a.city AND newer.province = a.province "
+        "AND (newer.created_at > a.created_at OR "
+        "(newer.created_at = a.created_at AND newer.id > a.id))"
+        ")",
+        params,
+    )
+
+
+def get_air_quality_overview(province: str | None = None) -> dict[str, Any]:
+    """Aggregate valid latest snapshots, one row per province/city."""
+
+    snapshot_sql, params = _latest_snapshot_sql(province=province)
+    aqi = "CAST(TRIM(aqi) AS UNSIGNED)"
+    sql = (
+        "SELECT COUNT(*) AS city_count, AVG(" + aqi + ") AS average_aqi, "
+        "SUM(CASE WHEN " + aqi + " <= 100 THEN 1 ELSE 0 END) AS good_city_count, "
+        "SUM(CASE WHEN " + aqi + " >= 101 THEN 1 ELSE 0 END) AS polluted_city_count, "
+        "MAX(created_at) AS latest_snapshot "
+        f"FROM ({snapshot_sql}) AS latest"
+    )
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return cursor.fetchone() or {}
+
+
+def get_air_quality_province_summaries() -> list[dict[str, Any]]:
+    """Return one latest-snapshot AQI summary per province."""
+
+    snapshot_sql, params = _latest_snapshot_sql()
+    aqi = "CAST(TRIM(aqi) AS UNSIGNED)"
+    sql = (
+        "SELECT province, COUNT(*) AS city_count, AVG(" + aqi + ") AS average_aqi, "
+        "MAX(created_at) AS latest_snapshot "
+        f"FROM ({snapshot_sql}) AS latest GROUP BY province ORDER BY province"
+    )
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return list(cursor.fetchall())
+
+
+def get_air_quality_city_rows(province: str | None = None) -> list[dict[str, Any]]:
+    """Return all deduplicated city snapshots for a map/detail page."""
+
+    snapshot_sql, params = _latest_snapshot_sql(province=province)
+    sql = f"SELECT * FROM ({snapshot_sql}) AS latest ORDER BY CAST(TRIM(aqi) AS UNSIGNED) DESC, city ASC"
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return list(cursor.fetchall())
+
+
+def get_air_quality_level_distribution(province: str | None = None) -> list[dict[str, Any]]:
+    snapshot_sql, params = _latest_snapshot_sql(province=province)
+    aqi = "CAST(TRIM(aqi) AS UNSIGNED)"
+    level = (
+        "CASE WHEN " + aqi + " <= 50 THEN '优' WHEN " + aqi + " <= 100 THEN '良' "
+        "WHEN " + aqi + " <= 150 THEN '轻度污染' WHEN " + aqi + " <= 200 THEN '中度污染' "
+        "WHEN " + aqi + " <= 300 THEN '重度污染' ELSE '严重污染' END"
+    )
+    sql = f"SELECT {level} AS level, COUNT(*) AS count FROM ({snapshot_sql}) AS latest GROUP BY level"
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return list(cursor.fetchall())

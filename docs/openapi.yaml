@@ -397,6 +397,45 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/air-quality/overview:
+    get:
+      tags: [Air Quality]
+      summary: Get latest city-snapshot AQI overview
+      operationId: getAirQualityOverview
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+      responses:
+        '200': {description: AQI overview}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/air-quality/provinces:
+    get:
+      tags: [Air Quality]
+      summary: Get province AQI summaries
+      operationId: getAirQualityProvinceSummaries
+      responses:
+        '200': {description: Province AQI summaries}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/air-quality/cities:
+    get:
+      tags: [Air Quality]
+      summary: Get deduplicated city AQI snapshots
+      operationId: getAirQualityCities
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+      responses:
+        '200': {description: City AQI snapshots}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/air-quality/levels:
+    get:
+      tags: [Air Quality]
+      summary: Count latest city snapshots by numeric AQI level
+      operationId: getAirQualityLevels
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+      responses:
+        '200': {description: AQI level distribution}
+        '500': {$ref: '#/components/responses/ServerError'}
   /api/air-quality/latest:
     get:
       tags: [Air Quality]
