@@ -28,6 +28,12 @@ class LocationUtilsTests(unittest.TestCase):
         self.assertEqual(city_query_values("北京市"), ("北京市", "北京"))
         self.assertEqual(province_query_values("广东"), ("广东", "广东省"))
 
+    def test_aqi_city_aliases_match_weather_data_names(self):
+        self.assertEqual(normalize_city_name("广安市"), "广安")
+        self.assertIn("广安", city_query_values("广安市"))
+        self.assertIn("阿坝藏族羌族自治州", city_query_values("阿坝"))
+        self.assertIn("凉山彝族自治州", city_query_values("凉山"))
+
 
 if __name__ == "__main__":
     unittest.main()

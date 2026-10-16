@@ -20,6 +20,11 @@ CITY_ALIASES = {
     "南京市": "南京",
     "武汉市": "武汉",
     "成都市": "成都",
+    # AQI 快照使用短名称，而 weather_data 的行政区字段使用完整名称。
+    # 这些自治州名称只做显式别名，避免无条件删除行政层级后缀。
+    "广安市": "广安",
+    "阿坝藏族羌族自治州": "阿坝",
+    "凉山彝族自治州": "凉山",
 }
 
 PROVINCE_ALIASES = {
@@ -85,8 +90,17 @@ def _query_values(value: Any, aliases: dict[str, str]) -> tuple[str, ...]:
 
 def city_query_values(value: Any) -> tuple[str, ...]:
     """Return raw/canonical city forms suitable for a parameterized ``IN``."""
-
-    return _query_values(value, CITY_ALIASES)
+    values = list(_query_values(value, CITY_ALIASES))
+    text = _clean(value)
+    if text:
+        # 普通地级市的两个数据源分别使用“广安”和“广安市”。仅补充“市”
+        # 这一种已确认的行政后缀；自治州等名称必须走上面的显式别名。
+        canonical = CITY_ALIASES.get(text, text)
+        if text.endswith("市") and text[:-1] not in values:
+            values.append(text[:-1])
+        elif not text.endswith(("州", "地区", "盟")) and f"{canonical}市" not in values:
+            values.append(f"{canonical}市")
+    return tuple(values)
 
 
 def province_query_values(value: Any) -> tuple[str, ...]:
