@@ -21,6 +21,8 @@ tags:
     description: Historical temperature averages, extremes and trends
   - name: Rainfall Analysis
     description: Historical precipitation indicators, trends and levels
+  - name: Wind Analysis
+    description: Historical wind speed indicators, trends and Beaufort levels
   - name: Air Quality
     description: AQI snapshots, ranking and distribution
   - name: Dashboard
@@ -478,6 +480,80 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/wind/dates:
+    get:
+      tags: [Wind Analysis]
+      summary: List available wind observation dates
+      operationId: getWindDates
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+      responses:
+        '200': {description: Available dates}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/wind/core:
+    get:
+      tags: [Wind Analysis]
+      summary: Get hierarchy-aware wind indicators
+      operationId: getWindCore
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200': {description: Wind core indicators}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/wind/trend:
+    get:
+      tags: [Wind Analysis]
+      summary: Get latest 30 regional daily wind values
+      operationId: getWindTrend
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200': {description: Wind trend}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/wind/recent:
+    get:
+      tags: [Wind Analysis]
+      summary: Get latest 7 regional daily wind values
+      operationId: getRecentWind
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200': {description: Recent wind values}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/ServerError'}
+  /api/wind/distribution:
+    get:
+      tags: [Wind Analysis]
+      summary: Count regional daily wind values by Beaufort level
+      operationId: getWindDistribution
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/StartDateOptional'
+        - $ref: '#/components/parameters/EndDateOptional'
+      responses:
+        '200': {description: Beaufort level distribution}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/ServerError'}
 components:
   parameters:
     ProvinceRequired:

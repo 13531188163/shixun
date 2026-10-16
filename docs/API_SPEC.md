@@ -850,3 +850,16 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 实时气象值。
 
 引入新的可信数据源后，必须先更新 DATA_DICTIONARY.md、API_SPEC.md 和 openapi.yaml，再实现后端与前端。
+
+
+## 8. Wind Analysis
+
+风力接口读取 `weather_data.avg_wind`、`max_wind`（数据库审计结果为无单位数值，单位按 m/s 解释；非法、负值和空值不参与统计）。原始表为区县粒度，所有接口先按区县+日期去重取日均，再逐级按区县→城市→省份→全国等权平均；不对不同地区风速求和。核心平均、趋势和等级分布使用区域日均 `avg_wind`，最大值使用区域日均 `max_wind`。等级计数按有效区域日均平均风速日期统计。
+
+- `GET /api/wind/dates`：返回筛选区域实际存在的有效风速日期。
+- `GET /api/wind/core`：返回 `avgWind`、`maxWind`、`maxWindDate`、`avgWindKmh`、`dominantLevel`、`observationDays`、`observationRecords`。
+- `GET /api/wind/trend`：返回最近 30 个有效观测日的 `{date, avgWind, maxWind}`，缺失值保持 null。
+- `GET /api/wind/recent`：返回最近 7 个有效观测日，并附 `level`。
+- `GET /api/wind/distribution`：返回 0–9+ 级的 `{level,name,range,count,percentage}`，计数总和等于有效区域日均平均风速观测日数。
+
+所有接口使用统一响应封装和 `province/city/district/startDate/endDate` 参数；无有效数据的核心接口返回 404。

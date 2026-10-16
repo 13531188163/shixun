@@ -18,6 +18,7 @@ from .routes.health_routes import health_bp
 from .routes.location_routes import location_bp
 from .routes.rainfall_routes import rainfall_bp
 from .routes.temperature_routes import temperature_bp
+from .routes.wind_routes import wind_bp
 from .routes.weather_routes import weather_bp
 from .utils.exceptions import AppException
 from .utils.response import error_response
@@ -53,6 +54,7 @@ def create_app(app_settings: Optional[Settings] = None) -> Flask:
     app.register_blueprint(location_bp, url_prefix="/api/locations")
     app.register_blueprint(weather_bp, url_prefix="/api/weather")
     app.register_blueprint(temperature_bp, url_prefix="/api/temperature")
+    app.register_blueprint(wind_bp, url_prefix="/api/wind")
     app.register_blueprint(rainfall_bp, url_prefix="/api/rainfall")
     app.register_blueprint(air_quality_bp, url_prefix="/api/air-quality")
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
