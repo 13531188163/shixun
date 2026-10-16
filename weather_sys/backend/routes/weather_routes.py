@@ -71,6 +71,9 @@ def province_weather_trend():
 @weather_bp.get("/city-comparison")
 def city_comparison():
     selected_date = date_param()
+    province = name_param("province")
     params = {"date": selected_date} if selected_date is not None else {}
+    if province is not None:
+        params["province"] = province
     result = weather_service.compare_cities(cities_param(), **params)
     return success_response(data=result["data"], meta=result["meta"])

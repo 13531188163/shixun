@@ -183,6 +183,7 @@ paths:
       operationId: compareCityWeather
       parameters:
         - $ref: '#/components/parameters/Cities'
+        - $ref: '#/components/parameters/ProvinceOptional'
         - $ref: '#/components/parameters/DateOptional'
       responses:
         '200':
@@ -444,6 +445,7 @@ paths:
       operationId: getLatestAirQuality
       parameters:
         - $ref: '#/components/parameters/CityRequired'
+        - $ref: '#/components/parameters/ProvinceOptional'
       responses:
         '200':
           $ref: '#/components/responses/AirQualitySuccess'

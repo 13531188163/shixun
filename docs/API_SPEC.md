@@ -391,13 +391,13 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - Method：GET
 - URL：/api/weather/city-comparison
 - 业务用途：返回多个城市在最新可用日期或指定固定日期的代表天气，用于最高温/最低温柱状图。
-- Query 参数：cities、date。
-- 参数类型：string、date。
-- 是否必填：cities 是；date 否。
+- Query 参数：cities、province、date。
+- 参数类型：string、string、date。
+- 是否必填：cities 是；province、date 否。
 - 默认值：无。
-- 参数约束：逗号分隔 1-10 个城市；每个名称长度 1-50；去重；date 为 YYYY-MM-DD；不存在城市不补零。
+- 参数约束：逗号分隔 1-10 个城市；每个名称长度 1-50；去重；province 长度 1-50；date 为 YYYY-MM-DD；不存在城市不补零。
 - 数据来源表：weather_data。
-- 数据计算方式：未提供 date 时每个城市按 latest 规则选取记录，提供 date 时每个城市选该固定观测日记录；转换 JSON 字段；返回顺序与输入顺序一致。
+- 数据计算方式：province 提供时先限定同一省份，避免同名城市跨省误匹配；未提供 date 时每个城市按 latest 规则选取记录，提供 date 时每个城市选该固定观测日记录；转换 JSON 字段；返回顺序与输入顺序一致。
 - 成功示例：
 
       {
@@ -621,13 +621,13 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - Method：GET
 - URL：/api/air-quality/latest
 - 业务用途：返回指定城市在 air_quality_data 中可获得的最新 AQI 快照。
-- Query 参数：city。
-- 参数类型：string。
-- 是否必填：是。
+- Query 参数：city、province。
+- 参数类型：string、string。
+- 是否必填：city 是；province 否。
 - 默认值：无。
-- 参数约束：长度 1-50；接受规范化城市名和已登记原始别名。
+- 参数约束：city、province 长度 1-50；接受规范化名称和已登记原始别名；province 提供时用于避免同名城市跨省误匹配。
 - 数据来源表：air_quality_data。
-- 数据计算方式：按规范化 city 过滤，按 created_at 倒序、id 倒序取一条；aqi 转 integer；created_at 仅代表快照时间。
+- 数据计算方式：按规范化 city 过滤，province 提供时再限定省份，按 created_at 倒序、id 倒序取一条；aqi 转 integer；created_at 仅代表快照时间。
 - 成功示例：
 
       {

@@ -11,11 +11,16 @@ const props = defineProps({
 })
 
 const metrics = [
+  // 源表只有日最高/最低温，没有逐时“当前温度”。
+  { key: 'currentTemp', label: '当前气温', formatter: (value) => value == null ? '未提供' : formatTemperature(value) },
   { key: 'maxTemp', label: '最高温度', formatter: formatTemperature },
   { key: 'minTemp', label: '最低温度', formatter: formatTemperature },
   { key: 'avgWind', label: '平均风速', formatter: formatWind },
   { key: 'maxWind', label: '最大风速', formatter: formatWind },
   { key: 'precipitation', label: '降水量', formatter: formatPrecipitation },
+  // 当前 weather_data 没有湿度和风向字段；明确显示不可用，不以估算值填充。
+  { key: 'humidity', label: '相对湿度', formatter: (value) => value == null ? '未提供' : `${value}%` },
+  { key: 'windDirection', label: '风向', formatter: (value) => value == null ? '未提供' : value },
 ]
 </script>
 
