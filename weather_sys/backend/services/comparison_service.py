@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from ..models import comparison_model
@@ -51,11 +51,16 @@ def _refs(cities: str | list[str]) -> list[dict[str, str]]:
 
 def get_locations() -> list[dict[str, str]]:
     result = []
+    seen: set[str] = set()
     for row in comparison_model.get_comparison_locations():
         province = normalize_province_name(row.get("province"))
         city = normalize_city_name(row.get("city"))
         if province and city:
-            result.append({"key": f"{province}::{city}", "province": province, "city": city})
+            key = f"{province}::{city}"
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append({"key": key, "province": province, "city": city})
     return result
 
 
@@ -73,8 +78,18 @@ def _number(value: Any) -> float | None:
 def compare(cities: str | list[str], start_date: str | None = None, end_date: str | None = None) -> dict[str, Any]:
     refs = _refs(cities)
     bounds = comparison_model.get_date_bounds() or {}
-    start = _date(start_date, "startDate") or str(bounds.get("start_date") or "")
-    end = _date(end_date, "endDate") or str(bounds.get("end_date") or "")
+    requested_start = _date(start_date, "startDate")
+    requested_end = _date(end_date, "endDate")
+    if requested_start is None and requested_end is None:
+        # Default to the latest complete 30-calendar-day window available in the database.
+        end = str(bounds.get("end_date") or "")
+        try:
+            start = (date.fromisoformat(end) - timedelta(days=29)).strftime(_DATE_FORMAT)
+        except ValueError:
+            start = str(bounds.get("start_date") or "")
+    else:
+        start = requested_start or str(bounds.get("start_date") or "")
+        end = requested_end or str(bounds.get("end_date") or "")
     if not start or not end or start > end:
         raise ValueError("startDate must be earlier than or equal to endDate")
     rows = comparison_model.get_comparison_daily(refs, start, end)

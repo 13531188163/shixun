@@ -208,7 +208,7 @@ paths:
     get:
       tags: [Comparison]
       summary: Compare two to four real weather locations
-      description: Weather metrics use common valid historical dates and regional daily aggregation. AQI is an independent fixed snapshot.
+      description: Weather metrics use common valid historical dates and regional daily aggregation. AQI is an independent fixed snapshot. When startDate and endDate are omitted, the latest 30-calendar-day window available in weather_data is used.
       operationId: compareLocations
       parameters:
         - $ref: '#/components/parameters/Cities'
