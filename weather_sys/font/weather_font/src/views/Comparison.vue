@@ -5,6 +5,13 @@ import ChartState from '../components/dashboard/ChartState.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import { getComparison, getComparisonLocations } from '../api/comparison'
 import { useEChart } from '../utils/chart'
+import {
+  RADAR_FIELDS,
+  buildRadarValues,
+  finiteNumber,
+  metricValue,
+  selectRadarDimensions,
+} from '../utils/comparisonRadar'
 
 const locations = ref([])
 const selectedKeys = ref([])
@@ -26,16 +33,7 @@ const aqiSnapshotTimeText = computed(() => cities.value.length
   ? cities.value.map((city) => `${cityLabel(city)}：${city?.aqiSnapshot?.createdAt || '暂无快照'}`).join('；')
   : '暂无快照')
 const metrics = (city) => city?.weatherMetrics || {}
-const finiteNumber = (value) => {
-  if (value === null || value === undefined || value === '') return null
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
-
-function metricNumber(city, field) {
-  if (field === 'aqiSnapshot') return finiteNumber(city?.aqiSnapshot?.aqi)
-  return finiteNumber(metrics(city)[field])
-}
+const metricNumber = metricValue
 
 function formatValue(value, suffix = '', digits = 2) {
   const number = finiteNumber(value)
@@ -107,36 +105,16 @@ async function query() {
   }
 }
 
-const radarFields = [
-  { key: 'avgTempEstimate', name: '平均温度', unit: ' ℃', digits: 2 },
-  { key: 'totalPrecip', name: '降水累计', unit: ' mm', digits: 2 },
-  { key: 'avgWind', name: '平均风速', unit: ' m/s', digits: 2 },
-  { key: 'aqiSnapshot', name: 'AQI快照', unit: '', digits: 0 },
-]
-
 // 雷达图只保留所有所选城市都有有效值的维度，避免将缺失值当作0参与比较。
-const radarDimensions = computed(() =>
-  radarFields.filter((field) => cities.value.length > 0 && baselineRange(field.key) && cities.value.every((city) => metricNumber(city, field.key) !== null)),
-)
-const radarReady = computed(() => radarDimensions.value.length >= 3)
+const radarFields = RADAR_FIELDS
+const radarDimensions = computed(() => selectRadarDimensions(cities.value, radarBaseline.value, radarFields))
+const radarValues = computed(() => buildRadarValues(cities.value, radarDimensions.value, radarBaseline.value))
+const radarReady = computed(() => radarDimensions.value.length >= 3
+  && radarValues.value.length === cities.value.length
+  && radarValues.value.every((values) => values.length === radarDimensions.value.length && values.every((value) => Number.isFinite(value))))
 const radarExcluded = computed(() =>
   radarFields.filter((field) => !radarDimensions.value.some((item) => item.key === field.key)).map((field) => field.name),
 )
-
-function normalizedValue(field, city) {
-  const value = metricNumber(city, field.key)
-  const range = baselineRange(field.key)
-  if (value === null || !range) return null
-  if (range.maximum === range.minimum) return 0.5
-  return Math.max(0, Math.min(1, (value - range.minimum) / (range.maximum - range.minimum)))
-}
-
-function baselineRange(fieldKey) {
-  const range = radarBaseline.value[fieldKey]
-  const minimum = finiteNumber(range?.min)
-  const maximum = finiteNumber(range?.max)
-  return minimum === null || maximum === null ? null : { minimum, maximum }
-}
 
 function rawMetricText(city, field) {
   const value = metricNumber(city, field.key)
@@ -145,6 +123,7 @@ function rawMetricText(city, field) {
 
 function radarOption() {
   const dimensions = radarDimensions.value
+  const values = radarValues.value
   return {
     animation: false,
     tooltip: {
@@ -170,7 +149,7 @@ function radarOption() {
       type: 'radar',
       data: cities.value.map((city, index) => ({
         name: cityLabel(city),
-        value: dimensions.map((field) => normalizedValue(field, city)),
+        value: values[index],
         lineStyle: { color: color(index), width: 2 },
         itemStyle: { color: color(index) },
         areaStyle: { color: color(index), opacity: 0.12 },
@@ -252,7 +231,7 @@ function monthOption() {
   }
 }
 
-useEChart(radarElement, radarOption, [cities, radarDimensions], {})
+useEChart(radarElement, radarOption, [cities, radarDimensions, radarValues], {})
 useEChart(barElement, barOption, [cities], {})
 useEChart(monthElement, monthOption, [cities], {})
 
@@ -345,7 +324,13 @@ onMounted(async () => {
         <div class="compare-grid">
           <DashboardPanel title="多维指标对比" :subtitle="radarReady ? '基于共同日期真实城市样本的相对量级，越外不代表越好' : '有效指标不足，无法进行雷达比较'">
             <div v-if="hasCommonDates && radarReady" ref="radarElement" class="chart radar-chart" />
-            <div v-else class="chart-empty">{{ hasCommonDates ? `至少需要三个对所有城市均有效的指标维度；缺失维度：${radarExcluded.join('、') || '暂无'}` : '没有共同有效天气观测日期，暂不绘制雷达图' }}</div>
+            <div v-else class="radar-empty">
+              <div class="chart-empty">{{ hasCommonDates ? `至少需要三个对所有城市均有效的指标维度；缺失维度：${radarExcluded.join('、') || '暂无'}` : '没有共同有效天气观测日期，暂不绘制雷达图' }}</div>
+              <table v-if="hasCommonDates" class="radar-fallback-table">
+                <thead><tr><th>原始指标</th><th v-for="city in cities" :key="city.key">{{ cityLabel(city) }}</th></tr></thead>
+                <tbody><tr v-for="field in radarFields" :key="field.key"><td>{{ field.name }}</td><td v-for="city in cities" :key="city.key">{{ rawMetricText(city, field) }}</td></tr></tbody>
+              </table>
+            </div>
           </DashboardPanel>
           <DashboardPanel title="城市温度与 AQI 对比" subtitle="温度来自历史天气日期范围，AQI来自独立固定快照">
             <div v-if="hasCommonDates" ref="barElement" class="chart" />
@@ -417,6 +402,11 @@ onMounted(async () => {
 .chart { width: 100%; height: 285px; min-height: 0; }
 .radar-chart { height: 295px; }
 .chart-empty { display: flex; height: 285px; align-items: center; justify-content: center; padding: 16px; color: var(--text-muted); font-size: 11px; line-height: 1.7; text-align: center; }
+.radar-empty { display: grid; min-height: 285px; align-content: center; gap: 8px; }
+.radar-empty .chart-empty { height: auto; min-height: 112px; }
+.radar-fallback-table { width: 100%; border-collapse: collapse; color: var(--text-secondary); font-size: 10px; }
+.radar-fallback-table th, .radar-fallback-table td { padding: 5px 6px; text-align: center; border: 1px solid rgb(45 126 177 / 34%); }
+.radar-fallback-table th { color: #cdeeff; background: rgb(8 58 106 / 70%); }
 .bottom-grid { display: grid; min-width: 0; grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr); gap: 10px; }
 .bottom-grid :deep(.dashboard-panel) { min-height: 220px; }
 .compare-table-wrap { overflow-x: auto; }
