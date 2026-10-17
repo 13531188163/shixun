@@ -78,3 +78,59 @@ def get_comparison_daily(refs: list[dict[str, str]], start_date: str, end_date: 
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
             return list(cursor.fetchall())
+
+
+def get_radar_weather_baseline(common_dates: Iterable[str]) -> dict[str, Any]:
+    """Return real weather-city ranges for radar normalization.
+
+    The baseline uses the same district-day -> city-day aggregation as the
+    comparison metrics, but it is calculated across every weather city on the
+    selected comparable dates.  This keeps two-city comparisons from turning
+    into a misleading 0/1 min-max contrast while avoiding invented bounds.
+    """
+
+    dates = tuple(dict.fromkeys(str(value) for value in common_dates if value))
+    if not dates:
+        return {}
+
+    date_clause, date_params = _in_clause("date", dates)
+    max_temp = _numeric("max_temp", temperature=True)
+    min_temp = _numeric("min_temp", temperature=True)
+    avg_wind = _numeric("avg_wind")
+    precip = _numeric("total_precip")
+    district_daily = (
+        "SELECT province, city, district, date, "
+        f"AVG({max_temp}) AS max_temp, AVG({min_temp}) AS min_temp, "
+        f"AVG({avg_wind}) AS avg_wind, AVG({precip}) AS precip "
+        f"FROM weather_data WHERE {date_clause} "
+        "AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' "
+        "GROUP BY province, city, district, date"
+    )
+    city_daily = (
+        "SELECT province, city, date, AVG(max_temp) AS max_temp, "
+        "AVG(min_temp) AS min_temp, AVG(avg_wind) AS avg_wind, "
+        "AVG(precip) AS precip "
+        f"FROM ({district_daily}) AS district_daily "
+        "GROUP BY province, city, date"
+    )
+    city_summary = (
+        "SELECT province, city, AVG(max_temp) AS avg_max_temp, "
+        "AVG(min_temp) AS avg_min_temp, SUM(precip) AS total_precip, "
+        "AVG(avg_wind) AS avg_wind "
+        f"FROM ({city_daily}) AS city_daily GROUP BY province, city"
+    )
+    temperature_estimate = (
+        "CASE WHEN avg_max_temp IS NOT NULL AND avg_min_temp IS NOT NULL "
+        "THEN (avg_max_temp + avg_min_temp) / 2 END"
+    )
+    sql = (
+        f"SELECT MIN({temperature_estimate}) AS avg_temp_min, "
+        f"MAX({temperature_estimate}) AS avg_temp_max, "
+        "MIN(total_precip) AS total_precip_min, MAX(total_precip) AS total_precip_max, "
+        "MIN(avg_wind) AS avg_wind_min, MAX(avg_wind) AS avg_wind_max "
+        f"FROM ({city_summary}) AS city_summary"
+    )
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, date_params)
+            return cursor.fetchone() or {}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections import defaultdict
 from datetime import date, timedelta
 from typing import Any
@@ -70,9 +71,27 @@ def _matches(row: dict[str, Any], ref: dict[str, str]) -> bool:
 
 def _number(value: Any) -> float | None:
     try:
-        return round(float(value), 2) if value is not None else None
+        number = float(value) if value is not None else None
+        return round(number, 2) if number is not None and math.isfinite(number) else None
     except (TypeError, ValueError):
         return None
+
+
+def _range(values: list[Any]) -> dict[str, float | None]:
+    numbers = [_number(value) for value in values]
+    numbers = [value for value in numbers if value is not None]
+    return {"min": min(numbers) if numbers else None, "max": max(numbers) if numbers else None}
+
+
+def _radar_baseline(common_dates: list[str]) -> dict[str, dict[str, float | None]]:
+    weather = comparison_model.get_radar_weather_baseline(common_dates) if common_dates else {}
+    aqi_rows = air_quality_service.get_air_quality_city_rows() if common_dates else []
+    return {
+        "avgTempEstimate": {"min": _number(weather.get("avg_temp_min")), "max": _number(weather.get("avg_temp_max"))},
+        "totalPrecip": {"min": _number(weather.get("total_precip_min")), "max": _number(weather.get("total_precip_max"))},
+        "avgWind": {"min": _number(weather.get("avg_wind_min")), "max": _number(weather.get("avg_wind_max"))},
+        "aqiSnapshot": _range([row.get("aqi") for row in aqi_rows]),
+    }
 
 
 def compare(cities: str | list[str], start_date: str | None = None, end_date: str | None = None) -> dict[str, Any]:
@@ -99,7 +118,17 @@ def compare(cities: str | list[str], start_date: str | None = None, end_date: st
             if _matches(row, ref):
                 grouped[index].append(row)
                 break
-    date_sets = [set(str(row.get("date")) for row in grouped[index]) for index in range(len(refs))]
+    date_sets = [
+        {
+            str(row.get("date"))
+            for row in grouped[index]
+            if row.get("date") and any(
+                row.get(field) is not None
+                for field in ("max_temp", "min_temp", "avg_wind", "max_wind", "precip")
+            )
+        }
+        for index in range(len(refs))
+    ]
     common_dates = sorted(set.intersection(*date_sets)) if date_sets and all(date_sets) else []
     common = set(common_dates)
     result_cities = []
@@ -126,4 +155,13 @@ def compare(cities: str | list[str], start_date: str | None = None, end_date: st
             "monthlyPrecip": [{"month": month, "precip": _number(value)} for month, value in sorted(monthly.items())],
             "aqiSnapshot": aqi or {"aqi": None, "status": None, "createdAt": None},
         })
-    return {"weatherPeriod": {"startDate": start, "endDate": end}, "comparableDates": common_dates, "dataCoverage": {"commonDays": len(common_dates), "cities": [{"key": item["key"], "validDays": item["weatherMetrics"]["validDays"]} for item in result_cities]}, "cities": result_cities}
+    return {
+        "weatherPeriod": {"startDate": start, "endDate": end},
+        "comparableDates": common_dates,
+        "dataCoverage": {
+            "commonDays": len(common_dates),
+            "cities": [{"key": item["key"], "validDays": item["weatherMetrics"]["validDays"]} for item in result_cities],
+        },
+        "radarBaseline": _radar_baseline(common_dates),
+        "cities": result_cities,
+    }

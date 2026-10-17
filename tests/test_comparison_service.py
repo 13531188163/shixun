@@ -14,7 +14,10 @@ class ComparisonServiceTests(unittest.TestCase):
             {"province": "上海市", "city": "上海市", "date": "2026-05-01", "max_temp": 24, "min_temp": 14, "avg_wind": 3, "max_wind": 5, "precip": 2},
             {"province": "北京市", "city": "北京市", "date": "2026-05-02", "max_temp": 22, "min_temp": 12, "avg_wind": 2, "max_wind": 4, "precip": 0},
         ]
-        result = comparison_service.compare("北京::北京,上海::上海")
+        with patch.object(comparison_service.comparison_model, "get_radar_weather_baseline", return_value={}), patch.object(
+            comparison_service.air_quality_service, "get_air_quality_city_rows", return_value=[]
+        ):
+            result = comparison_service.compare("北京::北京,上海::上海")
         self.assertEqual(result["comparableDates"], ["2026-05-01"])
         self.assertEqual(result["dataCoverage"]["commonDays"], 1)
         self.assertEqual(result["cities"][0]["weatherMetrics"]["validDays"], 2)
@@ -56,7 +59,10 @@ class ComparisonServiceTests(unittest.TestCase):
             None,
         ]
 
-        result = comparison_service.compare(",".join(f"{province}::{city}" for province, city in refs))
+        with patch.object(comparison_service.comparison_model, "get_radar_weather_baseline", return_value={}), patch.object(
+            comparison_service.air_quality_service, "get_air_quality_city_rows", return_value=[]
+        ):
+            result = comparison_service.compare(",".join(f"{province}::{city}" for province, city in refs))
 
         self.assertEqual(len(result["cities"]), 4)
         self.assertEqual(result["dataCoverage"]["commonDays"], 1)
@@ -91,6 +97,63 @@ class ComparisonServiceTests(unittest.TestCase):
                 {"key": "四川::广安", "province": "四川", "city": "广安"},
             ],
         )
+
+    @patch.object(
+        comparison_service.comparison_model,
+        "get_radar_weather_baseline",
+        return_value={
+            "avg_temp_min": 4.25,
+            "avg_temp_max": 28.75,
+            "total_precip_min": 12.5,
+            "total_precip_max": 108.25,
+            "avg_wind_min": 1.1,
+            "avg_wind_max": 7.4,
+        },
+    )
+    @patch.object(
+        comparison_service.air_quality_service,
+        "get_air_quality_city_rows",
+        return_value=[
+            {"province": "北京", "city": "北京", "aqi": 42},
+            {"province": "上海", "city": "上海", "aqi": None},
+            {"province": "四川", "city": "广安", "aqi": 118},
+        ],
+    )
+    def test_radar_baseline_uses_real_sample_ranges_and_ignores_null_aqi(self, aqi_rows, baseline):
+        result = comparison_service._radar_baseline(["2026-05-01"])
+        self.assertEqual(result["avgTempEstimate"], {"min": 4.25, "max": 28.75})
+        self.assertEqual(result["totalPrecip"], {"min": 12.5, "max": 108.25})
+        self.assertEqual(result["avgWind"], {"min": 1.1, "max": 7.4})
+        self.assertEqual(result["aqiSnapshot"], {"min": 42.0, "max": 118.0})
+
+    @patch.object(comparison_service.air_quality_service, "get_air_quality_city_rows", return_value=[])
+    @patch.object(comparison_service.comparison_model, "get_radar_weather_baseline", return_value={})
+    @patch.object(comparison_service.air_quality_service, "get_latest_air_quality", return_value=None)
+    @patch.object(comparison_service.comparison_model, "get_comparison_daily")
+    @patch.object(comparison_service.comparison_model, "get_date_bounds", return_value={"start_date": "2026-05-01", "end_date": "2026-05-02"})
+    def test_null_only_weather_date_is_not_counted_as_comparable(self, bounds, daily, latest, baseline, aqi_rows):
+        daily.return_value = [
+            {"province": "北京", "city": "北京", "date": "2026-05-01", "max_temp": None, "min_temp": None, "avg_wind": None, "max_wind": None, "precip": None},
+            {"province": "北京", "city": "北京", "date": "2026-05-02", "max_temp": 20, "min_temp": 10, "avg_wind": 2, "max_wind": 4, "precip": 1},
+            {"province": "上海", "city": "上海", "date": "2026-05-02", "max_temp": 22, "min_temp": 12, "avg_wind": 3, "max_wind": 5, "precip": 2},
+        ]
+        result = comparison_service.compare("北京::北京,上海::上海", "2026-05-01", "2026-05-02")
+        self.assertEqual(result["comparableDates"], ["2026-05-02"])
+        self.assertEqual(result["dataCoverage"]["commonDays"], 1)
+
+    def test_three_city_comparison_keeps_one_shared_date(self):
+        rows = [
+            {"province": province, "city": city, "date": "2026-05-02", "max_temp": 20 + index, "min_temp": 10 + index, "avg_wind": 2 + index, "max_wind": 4 + index, "precip": index}
+            for index, (province, city) in enumerate((("北京", "北京"), ("上海", "上海"), ("广东", "广州")))
+        ]
+        with patch.object(comparison_service.comparison_model, "get_date_bounds", return_value={"start_date": "2026-05-01", "end_date": "2026-05-02"}), patch.object(
+            comparison_service.comparison_model, "get_comparison_daily", return_value=rows
+        ), patch.object(comparison_service.air_quality_service, "get_latest_air_quality", return_value=None), patch.object(
+            comparison_service.comparison_model, "get_radar_weather_baseline", return_value={}
+        ), patch.object(comparison_service.air_quality_service, "get_air_quality_city_rows", return_value=[]):
+            result = comparison_service.compare("北京::北京,上海::上海,广东::广州", "2026-05-01", "2026-05-02")
+        self.assertEqual(len(result["cities"]), 3)
+        self.assertEqual(result["dataCoverage"]["commonDays"], 1)
 
 
 if __name__ == "__main__":

@@ -21,6 +21,10 @@ const monthElement = ref(null)
 
 const cities = computed(() => result.value?.cities || [])
 const hasCommonDates = computed(() => Number(result.value?.dataCoverage?.commonDays) > 0)
+const radarBaseline = computed(() => result.value?.radarBaseline || {})
+const aqiSnapshotTimeText = computed(() => cities.value.length
+  ? cities.value.map((city) => `${cityLabel(city)}：${city?.aqiSnapshot?.createdAt || '暂无快照'}`).join('；')
+  : '暂无快照')
 const metrics = (city) => city?.weatherMetrics || {}
 const finiteNumber = (value) => {
   if (value === null || value === undefined || value === '') return null
@@ -112,7 +116,7 @@ const radarFields = [
 
 // 雷达图只保留所有所选城市都有有效值的维度，避免将缺失值当作0参与比较。
 const radarDimensions = computed(() =>
-  radarFields.filter((field) => cities.value.length > 0 && cities.value.every((city) => metricNumber(city, field.key) !== null)),
+  radarFields.filter((field) => cities.value.length > 0 && baselineRange(field.key) && cities.value.every((city) => metricNumber(city, field.key) !== null)),
 )
 const radarReady = computed(() => radarDimensions.value.length >= 3)
 const radarExcluded = computed(() =>
@@ -120,13 +124,18 @@ const radarExcluded = computed(() =>
 )
 
 function normalizedValue(field, city) {
-  const values = cities.value.map((item) => metricNumber(item, field.key)).filter((value) => value !== null)
   const value = metricNumber(city, field.key)
-  if (value === null || !values.length) return null
-  const minimum = Math.min(...values)
-  const maximum = Math.max(...values)
-  // 同值维度没有相对差异，使用中位位置而不是除以0或伪造差异。
-  return maximum === minimum ? 0.5 : (value - minimum) / (maximum - minimum)
+  const range = baselineRange(field.key)
+  if (value === null || !range) return null
+  if (range.maximum === range.minimum) return 0.5
+  return Math.max(0, Math.min(1, (value - range.minimum) / (range.maximum - range.minimum)))
+}
+
+function baselineRange(fieldKey) {
+  const range = radarBaseline.value[fieldKey]
+  const minimum = finiteNumber(range?.min)
+  const maximum = finiteNumber(range?.max)
+  return minimum === null || maximum === null ? null : { minimum, maximum }
 }
 
 function rawMetricText(city, field) {
@@ -328,12 +337,13 @@ onMounted(async () => {
         <div class="comparison-period">
           <span>天气日期：{{ result.weatherPeriod.startDate }} 至 {{ result.weatherPeriod.endDate }}</span>
           <span>共同可比观测日：{{ formatDays(result.dataCoverage.commonDays) }} 天</span>
-          <span>AQI：数据库固定快照，入库时间按真实 created_at 展示</span>
+          <span>AQI：数据库固定快照，入库时间按真实 created_at 展示（非观测时间）</span>
+          <span>AQI快照入库：{{ aqiSnapshotTimeText }}</span>
         </div>
         <p v-if="!hasCommonDates" class="compare-alert comparison-no-common">当前城市没有共同有效天气观测日期，无法进行严格同期比较；请调整日期范围或更换城市。</p>
 
         <div class="compare-grid">
-          <DashboardPanel title="多维指标对比" :subtitle="radarReady ? '标准化相对量级，越外不代表越好' : '有效指标不足，无法进行雷达比较'">
+          <DashboardPanel title="多维指标对比" :subtitle="radarReady ? '基于共同日期真实城市样本的相对量级，越外不代表越好' : '有效指标不足，无法进行雷达比较'">
             <div v-if="hasCommonDates && radarReady" ref="radarElement" class="chart radar-chart" />
             <div v-else class="chart-empty">{{ hasCommonDates ? `至少需要三个对所有城市均有效的指标维度；缺失维度：${radarExcluded.join('、') || '暂无'}` : '没有共同有效天气观测日期，暂不绘制雷达图' }}</div>
           </DashboardPanel>
@@ -408,19 +418,19 @@ onMounted(async () => {
 .radar-chart { height: 295px; }
 .chart-empty { display: flex; height: 285px; align-items: center; justify-content: center; padding: 16px; color: var(--text-muted); font-size: 11px; line-height: 1.7; text-align: center; }
 .bottom-grid { display: grid; min-width: 0; grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr); gap: 10px; }
-.bottom-grid :deep(.dashboard-panel) { min-height: 260px; }
+.bottom-grid :deep(.dashboard-panel) { min-height: 220px; }
 .compare-table-wrap { overflow-x: auto; }
-.compare-table-wrap table { width: 100%; min-width: 720px; border-collapse: collapse; color: var(--text-secondary); font-size: 11px; }
-.compare-table-wrap th, .compare-table-wrap td { padding: 8px 7px; text-align: center; border: 1px solid rgb(45 126 177 / 40%); white-space: nowrap; }
+.compare-table-wrap table { width: 100%; min-width: 720px; border-collapse: collapse; color: var(--text-secondary); font-size: 10px; }
+.compare-table-wrap th, .compare-table-wrap td { padding: 6px 6px; text-align: center; border: 1px solid rgb(45 126 177 / 40%); white-space: nowrap; }
 .compare-table-wrap th { color: #cdeeff; background: rgb(8 58 106 / 80%); }
 .compare-table-wrap td:first-child { color: var(--text-primary); text-align: left; }
 .table-city-mark { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; }
-.conclusions { display: grid; gap: 8px; }
-.conclusion-item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 9px; align-items: start; padding: 9px 10px; color: var(--text-secondary); background: rgb(7 49 94 / 55%); border: 1px solid rgb(36 145 211 / 42%); border-radius: 6px; }
+.conclusions { display: grid; gap: 6px; }
+.conclusion-item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 9px; align-items: start; padding: 7px 8px; color: var(--text-secondary); background: rgb(7 49 94 / 55%); border: 1px solid rgb(36 145 211 / 42%); border-radius: 6px; }
 .conclusion-icon { display: grid; min-height: 28px; place-items: center; font-size: 15px; font-weight: 700; background: rgb(12 94 157 / 35%); border-radius: 50%; }
 .conclusion-item strong { display: inline-block; margin-right: 8px; color: var(--accent-cyan); font-size: 12px; }
 .conclusion-city { color: var(--text-primary); font-size: 12px; }
-.conclusion-item p { margin: 4px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
+.conclusion-item p { margin: 3px 0 0; color: var(--text-secondary); font-size: 11px; line-height: 1.5; }
 @media (max-width: 1250px) { .metric-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); } .compare-grid { grid-template-columns: 1fr 1fr; } .compare-grid :deep(.dashboard-panel:last-child) { grid-column: 1 / -1; } }
 @media (max-width: 900px) { .compare-grid, .bottom-grid { grid-template-columns: 1fr; } .compare-grid :deep(.dashboard-panel:last-child) { grid-column: auto; } }
 @media (max-width: 680px) { .metric-groups { grid-template-columns: 1fr; } .compare-filter { align-items: flex-start; flex-direction: column; } .compare-filter label { justify-content: space-between; width: 100%; } .compare-filter select, .compare-filter input { flex: 1; max-width: none; } .comparison-period { flex-direction: column; } }

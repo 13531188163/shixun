@@ -882,6 +882,6 @@ message 可读但不得泄漏 SQL、密码或连接串。
 
 - `GET /api/comparison/locations`：返回 weather_data 中可用的 `{key, province, city}` 城市组合。
 - `GET /api/comparison?cities=省份::城市,省份::城市&startDate=&endDate=`：最多比较 4 个不重复的省份+城市组合。天气数据先按区县和日期聚合为城市日值，再仅使用各城市共同有效日期计算指标；AQI 从固定快照单独读取，不参与天气日期范围计算。未传日期时使用数据库最新日期向前 30 个自然日的窗口。
-- 返回 `weatherPeriod`、`comparableDates`、`dataCoverage`、`cities`；每个城市包含 `weatherMetrics`、`monthlyPrecip` 和 `aqiSnapshot`。
+- 返回 `weatherPeriod`、`comparableDates`、`dataCoverage`、`radarBaseline`、`cities`；每个城市包含 `weatherMetrics`、`monthlyPrecip` 和 `aqiSnapshot`。`radarBaseline` 是同一共同可比日期内所有有效天气城市样本的真实最小/最大范围，供前端显示相对量级，不是人为设定的评分边界。
 - `avgTempEstimate` 是最高温和最低温的中间值估算；`totalPrecip` 是共同日期内城市区域日均降水累计值；AQI 的 `createdAt` 是快照入库时间，不代表实际观测时间。
 - 缺失天气指标或 AQI 使用 null，前端显示“暂无数据”；不生成月份、日期或 AQI 模拟值。
