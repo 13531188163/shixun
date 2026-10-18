@@ -13,7 +13,7 @@ import {
   getProvinceWeatherTrend,
   getCityWeatherComparison,
 } from '../api/weather'
-import { getAirQualityRanking, getAirQualityDistribution } from '../api/airQuality'
+import { getAirQualityRanking, getAirQualityDistribution, getAirQualityOverview, getLatestAirQuality } from '../api/airQuality'
 import DashboardHeader from '../components/dashboard/DashboardHeader.vue'
 import DashboardPanel from '../components/dashboard/DashboardPanel.vue'
 import WeatherOverview from '../components/dashboard/WeatherOverview.vue'
@@ -50,6 +50,9 @@ const weatherTrend = ref([])
 const cityComparison = ref([])
 const airQualityRanking = ref([])
 const airQualityDistribution = ref([])
+const airQualityReference = ref(null)
+const airQualityReferenceSummary = ref(null)
+const airQualityReferenceLabel = ref('固定 AQI 快照')
 
 const pageError = ref('')
 const locationLoading = ref(false)
@@ -146,6 +149,9 @@ function clearData() {
   cityComparison.value = []
   airQualityRanking.value = []
   airQualityDistribution.value = []
+  airQualityReference.value = null
+  airQualityReferenceSummary.value = null
+  airQualityReferenceLabel.value = '固定 AQI 快照'
   errors.overview = ''
   errors.weather = ''
   errors.trend = ''
@@ -198,38 +204,62 @@ function citiesForProvince(province) {
 }
 
 function airQualityParams() {
-  if (dataRegion.district) return null
   if (!dataRegion.province) return {}
   const params = { province: dataRegion.province }
   if (dataRegion.city) params.city = dataRegion.city
   return params
 }
 
+function airQualityCandidates() {
+  const candidates = []
+  if (dataRegion.city) {
+    candidates.push({
+      params: { province: dataRegion.province, city: dataRegion.city },
+      kind: 'city',
+      label: dataRegion.district ? `${dataRegion.city} AQI参考（区县无独立快照）` : `${dataRegion.city} AQI快照`,
+    })
+  }
+  if (dataRegion.province) candidates.push({ params: { province: dataRegion.province }, kind: 'province', label: `${dataRegion.province}省级 AQI参考` })
+  candidates.push({ params: {}, kind: 'country', label: '全国 AQI参考' })
+  return candidates
+}
+
 async function ensureSharedAirQuality(version) {
-  const params = airQualityParams()
-  if (!params) return { ranking: [], distribution: [], rankingError: '', distributionError: '' }
-  const key = `${params.province || 'country'}::${params.city || ''}`
+  const key = `${dataRegion.province || 'country'}::${dataRegion.city || ''}::${dataRegion.district || ''}`
   if (!airQualityPromises.has(key)) {
-    const requestParams = { ...params, limit: 10, order: 'asc' }
-    const distributionParams = { ...params }
-    airQualityPromises.set(key, Promise.allSettled([
-      getAirQualityRanking(requestParams),
-      getAirQualityDistribution(distributionParams),
-    ]).then(([rankingResult, distributionResult]) => ({
-      ranking: rankingResult.status === 'fulfilled' && Array.isArray(rankingResult.value.data)
-        ? rankingResult.value.data : [],
-      distribution: distributionResult.status === 'fulfilled' && Array.isArray(distributionResult.value.data)
-        ? distributionResult.value.data : [],
-      rankingError: rankingResult.status === 'rejected'
-        ? errorText(rankingResult.reason, '空气质量排名读取失败') : '',
-      distributionError: distributionResult.status === 'rejected'
-        ? errorText(distributionResult.reason, '空气质量分布读取失败') : '',
-    })))
+    airQualityPromises.set(key, (async () => {
+      let lastErrors = { rankingError: '', distributionError: '' }
+      for (const candidate of airQualityCandidates()) {
+        const params = candidate.params
+        const [rankingResult, distributionResult, summaryResult, latestResult] = await Promise.allSettled([
+          getAirQualityRanking({ ...params, limit: 10, order: 'asc' }),
+          getAirQualityDistribution(params),
+          candidate.kind === 'city' ? Promise.resolve({ data: null }) : getAirQualityOverview(params),
+          candidate.kind === 'city' ? getLatestAirQuality(params) : Promise.resolve({ data: null }),
+        ])
+        const ranking = rankingResult.status === 'fulfilled' && Array.isArray(rankingResult.value.data)
+          ? rankingResult.value.data : []
+        const distribution = distributionResult.status === 'fulfilled' && Array.isArray(distributionResult.value.data)
+          ? distributionResult.value.data : []
+        const summary = summaryResult.status === 'fulfilled' ? summaryResult.value.data : null
+        const latest = latestResult.status === 'fulfilled' ? latestResult.value.data : null
+        lastErrors = {
+          rankingError: rankingResult.status === 'rejected' ? errorText(rankingResult.reason, '空气质量排名读取失败') : '',
+          distributionError: distributionResult.status === 'rejected' ? errorText(distributionResult.reason, '空气质量分布读取失败') : '',
+        }
+        const hasData = Boolean(latest || ranking.length || Number(summary?.cityCount || 0) > 0 || distribution.length)
+        if (hasData) return { ranking, distribution, summary, latest, scopeLabel: candidate.label, ...lastErrors }
+      }
+      return { ranking: [], distribution: [], summary: null, latest: null, scopeLabel: '暂无 AQI 快照', ...lastErrors }
+    })())
   }
   const result = await airQualityPromises.get(key)
   if (version !== requestVersion) return null
   airQualityRanking.value = result.ranking
   airQualityDistribution.value = result.distribution
+  airQualityReference.value = result.latest || null
+  airQualityReferenceSummary.value = result.summary || null
+  airQualityReferenceLabel.value = result.scopeLabel || '固定 AQI 快照'
   errors.ranking = result.rankingError
   errors.distribution = result.distributionError
   return result
@@ -314,7 +344,9 @@ async function loadSelectedData(version) {
   errors.trend = trendResult.status === 'rejected' ? errorText(trendResult.reason, '天气历史趋势读取失败') : ''
   errors.comparison = comparisonResult.status === 'rejected' ? errorText(comparisonResult.reason, '城市比较读取失败') : ''
   errors.airQuality = !latestAirQuality.value && errors.overview ? '空气质量数据暂无' : ''
-  if (dataRegion.district) errors.airQuality = '当前区县暂无对应 AQI 快照'
+  if (dataRegion.district && (airQualityReference.value || airQualityReferenceSummary.value)) {
+    errors.airQuality = ''
+  } else if (dataRegion.district) errors.airQuality = '当前区县暂无对应 AQI 快照，右侧显示所属城市或省级参考'
   payloadLoading.value = false
 }
 
@@ -614,19 +646,19 @@ onMounted(loadInitial)
               <span class="dashboard-rail-kicker">AIR QUALITY</span>
               <strong>空气质量数据</strong>
             </div>
-            <DashboardPanel class="dashboard-focus-panel" title="空气质量概况" subtitle="固定 AQI 快照">
+            <DashboardPanel class="dashboard-focus-panel" title="空气质量概况" :subtitle="airQualityReferenceLabel">
               <AirQualityOverview
-                :air-quality="latestAirQuality"
-                :air-quality-summary="dashboard?.airQualitySummary"
+                :air-quality="latestAirQuality || airQualityReference"
+                :air-quality-summary="dashboard?.airQualitySummary || airQualityReferenceSummary"
                 :location="dataRegion"
                 :loading="loading"
                 :error="errors.airQuality"
               />
             </DashboardPanel>
-            <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="AQI 低值城市 TOP10" subtitle="固定快照 · 从低到高">
+            <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="AQI 低值城市 TOP10" :subtitle="`${airQualityReferenceLabel} · 从低到高`">
               <AirQualityRankingChart :data="airQualityRanking" :loading="loading" :error="errors.ranking" />
             </DashboardPanel>
-            <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="空气质量等级分布" subtitle="固定快照 · 实际等级">
+            <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="空气质量等级分布" :subtitle="`${airQualityReferenceLabel} · 实际等级`">
               <AirQualityDistributionChart :data="airQualityDistribution" :loading="loading" :error="errors.distribution" />
             </DashboardPanel>
           </div>
