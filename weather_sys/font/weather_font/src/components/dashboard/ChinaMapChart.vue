@@ -365,7 +365,7 @@ function buildOption() {
         layoutCenter: fit.center, layoutSize: `${fit.layoutSize}%`, zoom: fit.zoom,
         boundingCoords: fit.boundingCoords || undefined, aspectScale: 1,
         selectedMode: false,
-        itemStyle: { areaColor: 'rgba(8, 48, 82, 0.54)', borderColor: 'rgba(73, 198, 238, 0.84)', borderWidth: 0.95, shadowColor: level === 'country' ? 'rgba(20, 192, 255, 0.66)' : 'rgba(255, 173, 70, 0.38)', shadowBlur: level === 'country' ? 19 : 22 },
+        itemStyle: { areaColor: 'rgba(7, 54, 93, 0.68)', borderColor: 'rgba(73, 198, 238, 0.84)', borderWidth: 0.9, shadowColor: level === 'country' ? 'rgba(20, 192, 255, 0.42)' : 'rgba(255, 173, 70, 0.28)', shadowBlur: level === 'country' ? 12 : 14 },
         emphasis: { itemStyle: { areaColor: 'rgba(37, 161, 220, 0.62)', borderColor: '#d6f8ff', borderWidth: 1.35 }, label: { show: true, color: '#f4fdff', fontSize: level === 'country' ? 10 : 11, fontWeight: 700 } },
         label: { show: true, color: 'rgba(190, 230, 245, 0.76)', fontSize: level === 'country' ? 8 : 9, formatter: (params) => compactName(params.name) },
       },
@@ -379,12 +379,12 @@ function buildOption() {
     series: [
       {
         name: '行政区边界', type: 'map', map: mapName, geoIndex: 0, roam: false, silent: false, data,
-        label: { show: false }, itemStyle: { areaColor: 'rgba(5, 34, 64, 0.2)', borderColor: 'rgba(76, 202, 245, 0.6)', borderWidth: 0.7 },
+        label: { show: false }, itemStyle: { areaColor: 'rgba(7, 54, 93, 0.64)', borderColor: 'rgba(76, 202, 245, 0.68)', borderWidth: 0.75 },
         emphasis: { itemStyle: { areaColor: 'rgba(38, 187, 232, 0.52)' } },
       },
       {
         name: '行政区光晕', type: 'map', map: mapName, geoIndex: 0, silent: true,
-        data: data.map((item) => ({ name: item.name, adcode: item.adcode, itemStyle: { areaColor: 'rgba(0, 171, 229, 0.06)', borderColor: item.adcode === effectiveSelectedAdcode.value ? 'rgba(255, 211, 126, 0.98)' : 'rgba(40, 222, 255, 0.78)', borderWidth: item.adcode === effectiveSelectedAdcode.value ? 3.2 : 2, shadowColor: item.adcode === effectiveSelectedAdcode.value ? 'rgba(255, 154, 44, 0.92)' : 'rgba(0, 195, 255, 0.78)', shadowBlur: item.adcode === effectiveSelectedAdcode.value ? 30 : 20 } })),
+        data: data.map((item) => ({ name: item.name, adcode: item.adcode, itemStyle: { areaColor: 'rgba(0, 171, 229, 0.04)', borderColor: item.adcode === effectiveSelectedAdcode.value ? 'rgba(255, 211, 126, 0.98)' : 'rgba(40, 222, 255, 0.62)', borderWidth: item.adcode === effectiveSelectedAdcode.value ? 2.2 : 1.1, shadowColor: item.adcode === effectiveSelectedAdcode.value ? 'rgba(255, 154, 44, 0.66)' : 'rgba(0, 195, 255, 0.42)', shadowBlur: item.adcode === effectiveSelectedAdcode.value ? 16 : 9 } })),
         label: { show: false },
       },
       {

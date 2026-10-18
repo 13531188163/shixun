@@ -8,6 +8,7 @@ body {
   min-height: 100vh;
   flex-direction: column;
   isolation: isolate;
+  overflow-x: hidden;
   color: var(--color-text);
   background:
     radial-gradient(ellipse 42% 48% at 50% 49%, rgb(9 76 131 / 29%), transparent 78%),
