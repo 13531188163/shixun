@@ -36,18 +36,20 @@
     .panel-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:14px 16px; border-bottom:1px solid #1e496f; }
     .panel-head h2 { margin:0; font-size:16px; }
     .panel-head span { color:var(--muted); font-size:11px; }
-    .endpoint-tabs { display:flex; gap:6px; padding:10px 12px; overflow:auto; border-bottom:1px solid #183e64; }
-    .endpoint-tab { flex:0 0 auto; padding:6px 9px; color:#a7c7dc; background:#0a1e3a; border:1px solid #214d74; border-radius:5px; }
-    .endpoint-tab.active { color:#fff; background:#0e5684; border-color:var(--cyan); }
+    .endpoint-tabs { padding:10px 12px; border-bottom:1px solid #183e64; }
+    .endpoint-select { width:100%; padding:9px; color:var(--text); background:#071a34; border:1px solid #2b668d; border-radius:5px; }
     .form { padding:14px 16px; }
     .field { display:flex; margin-bottom:11px; flex-direction:column; gap:5px; }
     .field label { color:#c8e2f2; font-size:12px; }
     .field label em { color:var(--orange); font-style:normal; }
+    .field-error { min-height:16px; color:var(--red); font-size:11px; }
     .field input,.field select,.field textarea { width:100%; padding:8px 9px; color:var(--text); background:#071a34; border:1px solid #285679; border-radius:5px; outline:none; }
     .field input:focus,.field select:focus,.field textarea:focus { border-color:var(--cyan); box-shadow:0 0 0 2px #36c9ff22; }
     .field textarea { min-height:90px; resize:vertical; }
     .hint { color:var(--muted); font-size:11px; }
-    .execute { width:100%; margin-top:6px; padding:10px; color:#03182b; font-weight:700; background:linear-gradient(90deg,#4dd5ff,#6de6b2); border:0; border-radius:5px; }
+    .form-actions { position:sticky; bottom:0; display:grid; grid-template-columns:1fr 1fr; gap:8px; padding-top:10px; background:linear-gradient(180deg,transparent,var(--panel) 22%); }
+    .execute,.example { width:100%; padding:10px; color:#03182b; font-weight:700; background:linear-gradient(90deg,#4dd5ff,#6de6b2); border:0; border-radius:5px; }
+    .example { color:#dff8ff; background:#123c67; border:1px solid #2b7eae; }
     .execute:disabled { cursor:wait; opacity:.55; }
     .result-panel { display:flex; flex-direction:column; overflow:hidden; }
     .result-meta { display:flex; min-height:48px; align-items:center; gap:12px; padding:8px 16px; color:var(--muted); border-bottom:1px solid #1e496f; }
@@ -60,6 +62,7 @@
     .view-tabs { display:flex; gap:4px; padding:10px 16px 0; }
     .view-tab { padding:6px 11px; color:var(--muted); background:transparent; border:0; border-bottom:2px solid transparent; }
     .view-tab.active { color:var(--cyan); border-color:var(--cyan); }
+    .view-tab:disabled { color:#526b82; cursor:not-allowed; }
     .json { margin:0; padding:16px; color:#c9edff; font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre-wrap; word-break:break-word; }
     .table-wrap { padding:12px 16px 18px; overflow:auto; }
     table { width:100%; border-collapse:collapse; font-size:12px; }
@@ -105,9 +108,13 @@
   const $ = (id) => document.getElementById(id);
   const tagLabels = { System:'系统概览', Location:'地区接口', Weather:'天气数据', 'Temperature Analysis':'温度分析', 'Rainfall Analysis':'降水分析', 'Wind Analysis':'风力分析', 'Air Quality':'空气质量', Comparison:'区域对比', Dashboard:'Dashboard 接口' };
   const tagDescriptions = { System:'服务健康与运行状态', Location:'省份、城市和区县真实选项', Weather:'历史天气记录和趋势', 'Temperature Analysis':'历史温度统计', 'Rainfall Analysis':'历史降水统计', 'Wind Analysis':'风速和风级统计', 'Air Quality':'AQI 固定快照', Comparison:'多城市历史天气对比', Dashboard:'首页聚合数据' };
+  const parameterLabels = { province:'省份', city:'城市', district:'区县', date:'数据日期', startDate:'开始日期', endDate:'结束日期', days:'查询天数', limit:'返回数量', order:'排序方向', cities:'对比城市', cityLevel:'城市级别' };
+  const operationLabels = { '/api/locations/provinces':'获取省份列表', '/api/locations/cities':'获取省份下的城市', '/api/locations/districts':'获取城市下的区县', '/api/weather/latest':'获取最新历史天气', '/api/weather/trend':'历史天气趋势查询', '/api/weather/national-trend':'全国天气趋势查询', '/api/weather/city-comparison':'城市天气对比查询', '/api/temperature/average':'温度平均值查询', '/api/temperature/extremes':'温度极值查询', '/api/temperature/trend':'温度趋势查询', '/api/temperature/monthly':'月度温度趋势查询', '/api/temperature/recent':'最近天气温度查询', '/api/rainfall/core':'降水综合指标查询', '/api/rainfall/trend':'降水趋势查询', '/api/rainfall/recent':'最近降水查询', '/api/rainfall/distribution':'降水等级分布查询', '/api/wind/core':'风力综合指标查询', '/api/wind/trend':'风速趋势查询', '/api/wind/recent':'最近风况查询', '/api/wind/distribution':'风力等级分布查询', '/api/air-quality/overview':'空气质量概况查询', '/api/air-quality/ranking':'AQI 城市排行查询', '/api/air-quality/distribution':'空气质量等级分布查询', '/api/comparison':'区域对比查询', '/api/dashboard/overview':'城市 Dashboard 概览', '/api/dashboard/national-overview':'全国 Dashboard 概览', '/api/dashboard/province-overview':'省级 Dashboard 概览' };
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (x) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
   const dataOf = (payload) => payload && Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : payload;
   const isNumber = (value) => value !== '' && value !== null && Number.isFinite(Number(value));
+  const resolveRef = (value) => value?.$ref ? value.$ref.split('/').slice(1).reduce((obj, key) => obj?.[key], state.spec) : value;
+  const operationLabel = (item) => operationLabels[item.path] || item.operation.summary || item.path;
 
   async function loadSpec() {
     const response = await fetch('/openapi.json');
@@ -137,21 +144,23 @@
     $('moduleTitle').textContent = tagLabels[group.tag] || group.tag;
     $('moduleDescription').textContent = tagDescriptions[group.tag] || state.spec.tags?.find((x) => x.name === group.tag)?.description || '';
     $('endpointCount').textContent = `${group.operations.length} 个接口`;
-    $('endpointTabs').innerHTML = group.operations.map((x, index) => `<button type="button" class="endpoint-tab ${index === 0 ? 'active' : ''}" data-index="${index}">${escapeHtml(x.method.toUpperCase())} ${escapeHtml(x.operation.summary || x.path)}</button>`).join('');
-    $('endpointTabs').querySelectorAll('.endpoint-tab').forEach((button) => button.addEventListener('click', () => { $('endpointTabs').querySelectorAll('.endpoint-tab').forEach((x) => x.classList.remove('active')); button.classList.add('active'); selectOperation(group.operations[Number(button.dataset.index)]); }));
+    $('endpointTabs').innerHTML = `<select id="endpointSelect" class="endpoint-select" aria-label="选择接口">${group.operations.map((x, index) => `<option value="${index}">${escapeHtml(x.method.toUpperCase())} · ${escapeHtml(operationLabel(x))}</option>`).join('')}</select>`;
+    $('endpointSelect').addEventListener('change', (event) => selectOperation(group.operations[Number(event.target.value)]));
     selectOperation(group.operations[0]);
     renderNav();
   }
 
   function selectOperation(operation) {
     state.operation = operation;
-    $('queryForm').innerHTML = `${(operation.operation.parameters || []).map(parameterField).join('')}${operation.operation.requestBody ? '<div class="field"><label>请求体 JSON</label><textarea name="__body" placeholder="请输入 JSON 请求体"></textarea></div>' : ''}<button class="execute" type="submit">执行查询</button>`;
+    $('queryForm').innerHTML = `<div class="hint" style="margin-bottom:12px">${escapeHtml(operationLabel(operation))} · ${escapeHtml(operation.path)} · ${operation.method.toUpperCase()}<br>带 <b style="color:var(--orange)">*</b> 的参数必须填写。</div>${(operation.operation.parameters || []).map(parameterField).join('')}${operation.operation.requestBody ? '<div class="field"><label>请求体 JSON</label><textarea name="__body" placeholder="请输入 JSON 请求体"></textarea><div class="field-error"></div></div>' : ''}<div class="form-actions"><button class="example" type="button" id="exampleButton">填入示例条件</button><button class="execute" type="submit">执行查询</button></div>`;
+    $('exampleButton').addEventListener('click', fillExample);
     $('queryForm').querySelectorAll('select[data-location]').forEach((select) => select.addEventListener('change', () => updateLocationFields(select.dataset.location)));
     updateLocationFields();
   }
 
-  function parameterField(parameter) {
-    const schema = parameter.schema || {};
+  function parameterField(rawParameter) {
+    const parameter = resolveRef(rawParameter) || {};
+    const schema = resolveRef(parameter.schema) || {};
     const required = parameter.required ? '<em>*</em>' : '';
     const name = parameter.name;
     let control;
@@ -159,7 +168,9 @@
     else if (name === 'province' || name === 'city' || name === 'district') control = `<select name="${escapeHtml(name)}" data-location="${name}"><option value="">${parameter.required ? '请选择' : '全部'}</option></select>`;
     else if (schema.format === 'date') control = `<input name="${escapeHtml(name)}" type="date">`;
     else control = `<input name="${escapeHtml(name)}" type="${schema.type === 'integer' || schema.type === 'number' ? 'number' : 'text'}"${schema.type === 'integer' ? ' step="1"' : ''} placeholder="${escapeHtml(parameter.description || '')}">`;
-    return `<div class="field"><label>${escapeHtml(parameter.description || name)} ${required}<span class="hint">(${escapeHtml(name)})</span></label>${control}</div>`;
+    const defaultValue = schema.default ?? '';
+    if (defaultValue && control.includes('type="')) control = control.replace('>', ` value="${escapeHtml(defaultValue)}">`);
+    return `<div class="field"><label>${escapeHtml(parameterLabels[name] || parameter.description || name)} ${required}<span class="hint">(${escapeHtml(name)}) · ${escapeHtml(schema.type || 'string')}${schema.format ? ` · ${escapeHtml(schema.format)}` : ''}</span></label>${control}<div class="field-error" data-error-for="${escapeHtml(name)}"></div></div>`;
   }
 
   async function updateLocationFields(changed) {
@@ -171,8 +182,34 @@
     if (changed === 'province' && form.elements.district) form.elements.district.innerHTML = '<option value="">全部</option>';
   }
 
+  function validateForm() {
+    let valid = true; const form = $('queryForm');
+    (state.operation.operation.parameters || []).forEach((raw) => {
+      const parameter = resolveRef(raw) || {}; const input = form.elements[parameter.name]; const error = form.querySelector(`[data-error-for="${CSS.escape(parameter.name)}"]`); if (!input || !error) return;
+      const value = input.value.trim(); let message = '';
+      if (parameter.required && !value) message = `请填写${parameterLabels[parameter.name] || parameter.name}`;
+      const schema = resolveRef(parameter.schema) || {};
+      if (!message && value && schema.type === 'integer' && !/^-?\d+$/.test(value)) message = '请输入整数';
+      if (!message && value && schema.type === 'number' && !Number.isFinite(Number(value))) message = '请输入数字';
+      if (!message && value && schema.format === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) message = '日期格式必须为 YYYY-MM-DD';
+      if (!message && value && schema.enum && !schema.enum.includes(value)) message = `可选值：${schema.enum.join('、')}`;
+      error.textContent = message; if (message) valid = false;
+    });
+    return valid;
+  }
+
+  async function fillExample() {
+    const form = $('queryForm'); const params = state.operation.operation.parameters || [];
+    const chooseFirst = async (name, changed) => { const input = form.elements[name]; if (!input) return; if (!input.options.length || input.options.length <= 1) await updateLocationFields(changed); if (input.options.length > 1) { input.value = input.options[1].value; input.dispatchEvent(new Event('change')); } };
+    if (form.elements.province) await chooseFirst('province', 'province');
+    if (form.elements.city) await chooseFirst('city', 'city');
+    if (form.elements.district) await chooseFirst('district', 'district');
+    for (const raw of params) { const parameter = resolveRef(raw) || {}; const input = form.elements[parameter.name]; if (!input || input.value) continue; const schema = resolveRef(parameter.schema) || {}; if (schema.enum?.length) input.value = schema.enum[0]; else if (parameter.name === 'date' || parameter.name === 'endDate' || parameter.name === 'startDate') { try { const response = await fetch('/api/weather/national-dates'); const payload = await response.json(); const dates = dataOf(payload) || []; if (dates.length) input.value = parameter.name === 'startDate' ? dates[Math.min(6, dates.length - 1)] : dates[0]; } catch {} } else if (parameter.name === 'days') input.value = schema.default || 7; else if (parameter.name === 'limit') input.value = schema.default || 10; else if (parameter.name === 'order') input.value = schema.default || 'asc'; }
+  }
+
   async function execute(event) {
     event.preventDefault(); const form = new FormData($('queryForm')); const query = new URLSearchParams(); let body;
+    if (!validateForm()) { $('status').textContent = '请先修正参数'; $('status').className = 'status error'; return; }
     for (const [key, value] of form.entries()) { if (!value) continue; if (key === '__body') body = value; else query.set(key, value); }
     const url = `${state.operation.path}${query.toString() ? `?${query}` : ''}`; const started = performance.now(); $('status').textContent = '请求中…'; $('status').className = 'status'; $('duration').textContent = ''; $('requestBox').hidden = true;
     try { const response = await fetch(url, { method: state.operation.method.toUpperCase(), headers: body ? {'Content-Type':'application/json'} : {}, body: body || undefined }); const payload = await response.json(); state.response = payload; state.requestUrl = `${location.origin}${url}`; const elapsed = Math.round(performance.now() - started); $('status').textContent = `${response.status} ${response.ok ? '成功' : '失败'}`; $('status').className = `status ${response.ok ? '' : 'error'}`; $('duration').textContent = `${elapsed} ms`; renderResult(); } catch (error) { $('status').textContent = '请求失败'; $('status').className = 'status error'; $('duration').textContent = error.message; state.response = { error: error.message }; renderResult(); }
@@ -181,9 +218,9 @@
   function rowsFrom(data) { if (Array.isArray(data)) return data; if (data && typeof data === 'object') { const array = Object.values(data).find(Array.isArray); return array || [data]; } return []; }
   function renderTable(data) { const rows = rowsFrom(data); if (!rows.length) return '<div class="empty">当前响应没有可展示的列表数据</div>'; const keys = [...new Set(rows.flatMap((row) => Object.keys(row || {})))]; return `<div class="table-wrap"><table><thead><tr>${keys.map((x) => `<th>${escapeHtml(x)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${keys.map((key) => `<td>${escapeHtml(typeof row?.[key] === 'object' ? JSON.stringify(row[key]) : row?.[key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`; }
   function renderChart(data) { const rows = rowsFrom(data); if (!rows.length) return '<div class="empty">当前响应不适合图表展示</div>'; const keys = Object.keys(rows[0] || {}); const xKey = keys.find((x) => /date|month/i.test(x)) || keys[0]; const valueKeys = keys.filter((x) => x !== xKey && rows.some((r) => isNumber(r?.[x]))); if (!valueKeys.length) return '<div class="empty">当前响应没有数值序列</div>'; setTimeout(() => { const el = document.querySelector('.chart'); if (!el || !window.echarts) return; state.chart?.dispose(); state.chart = echarts.init(el); state.chart.setOption({ tooltip:{trigger:'axis'}, legend:{data:valueKeys}, xAxis:{type:'category',data:rows.map((r) => r?.[xKey])}, yAxis:{type:'value'}, series:valueKeys.map((key) => ({name:key,type:'line',smooth:true,data:rows.map((r) => Number(r?.[key]))})) }); }, 0); return '<div class="chart"></div>'; }
-  function renderResult() { const payload = state.response; const data = dataOf(payload); const body = $('resultBody'); body.innerHTML = `<pre class="json">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`; document.querySelectorAll('.view-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.view === state.view)); if (state.view === 'table') body.innerHTML = renderTable(data); if (state.view === 'chart') body.innerHTML = renderChart(data); }
+  function renderResult() { const payload = state.response; const data = dataOf(payload); const rows = rowsFrom(data); const hasTable = rows.length > 0; const keys = rows[0] ? Object.keys(rows[0]) : []; const hasChart = hasTable && keys.some((key) => /date|month/i.test(key)) && keys.some((key) => rows.some((row) => isNumber(row?.[key]))); const body = $('resultBody'); document.querySelectorAll('.view-tab').forEach((tab) => { tab.classList.toggle('active', tab.dataset.view === state.view); tab.disabled = (tab.dataset.view === 'table' && !hasTable) || (tab.dataset.view === 'chart' && !hasChart); }); if ((state.view === 'table' && !hasTable) || (state.view === 'chart' && !hasChart)) state.view = 'json'; body.innerHTML = state.view === 'table' ? renderTable(data) : state.view === 'chart' ? renderChart(data) : `<pre class="json">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`; }
 
-  $('queryForm').addEventListener('submit', execute); $('navSearch').addEventListener('input', (e) => renderNav(e.target.value)); $('swaggerButton').addEventListener('click', () => window.open('/api/docs', '_blank')); $('clearButton').addEventListener('click', () => { state.response = null; $('status').textContent = '等待查询'; $('duration').textContent = ''; $('resultBody').innerHTML = '<div class="empty">请选择接口并执行查询</div>'; }); $('requestToggle').addEventListener('click', () => { $('requestBox').textContent = state.requestUrl || '尚未执行请求'; $('requestBox').hidden = !$('requestBox').hidden; }); $('copyButton').addEventListener('click', async () => { if (state.response) await navigator.clipboard?.writeText(JSON.stringify(state.response, null, 2)); }); document.querySelectorAll('.view-tab').forEach((tab) => tab.addEventListener('click', () => { state.view = tab.dataset.view; renderResult(); }));
+  $('queryForm').addEventListener('submit', execute); $('navSearch').addEventListener('input', (e) => renderNav(e.target.value)); $('swaggerButton').addEventListener('click', () => window.open('/api/docs', '_blank')); $('clearButton').addEventListener('click', () => { state.response = null; $('status').textContent = '等待查询'; $('duration').textContent = ''; $('resultBody').innerHTML = '<div class="empty">请选择接口并执行查询</div>'; }); $('requestToggle').addEventListener('click', () => { $('requestBox').textContent = state.requestUrl || '尚未执行请求'; $('requestBox').hidden = !$('requestBox').hidden; }); $('copyButton').addEventListener('click', async () => { if (state.response) await navigator.clipboard?.writeText(JSON.stringify(state.response, null, 2)); }); document.querySelectorAll('.view-tab').forEach((tab) => tab.addEventListener('click', () => { if (tab.disabled) return; state.view = tab.dataset.view; renderResult(); }));
   loadSpec().catch((error) => { $('moduleDescription').textContent = error.message; $('status').textContent = 'OpenAPI 加载失败'; $('status').className = 'status error'; });
 })();
 </script>
