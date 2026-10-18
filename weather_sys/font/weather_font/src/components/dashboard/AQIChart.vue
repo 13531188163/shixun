@@ -1,7 +1,7 @@
 <script setup>
 import ChartState from './ChartState.vue'
 import { useEChart } from '../../utils/chart'
-import { aqiStatusColor, formatNumber } from '../../utils/formatters'
+import { aqiStatusColor, formatAqi } from '../../utils/formatters'
 import { CHART_COLORS, DARK_TOOLTIP, numericValue, rgba } from '../../utils/chartTheme'
 import { computed, ref } from 'vue'
 
@@ -26,7 +26,7 @@ function buildOption() {
     return {
       animationDuration: 620,
       animationEasing: 'cubicOut',
-      tooltip: { trigger: 'item', ...DARK_TOOLTIP, formatter: (params) => params.name === '当前 AQI' ? `当前 AQI：${formatNumber(aqi)}${props.status ? ` · ${props.status}` : ''}` : '' },
+      tooltip: { trigger: 'item', ...DARK_TOOLTIP, formatter: (params) => params.name === '当前 AQI' ? `当前 AQI：${formatAqi(aqi)}${props.status ? ` · ${props.status}` : ''}` : '' },
       title: {
         text: String(aqi), subtext: props.status || 'AQI', left: '50%', top: '34%', textAlign: 'center',
         textStyle: { color: CHART_COLORS.text, fontSize: 29, fontWeight: 700 },

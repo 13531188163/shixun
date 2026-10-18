@@ -1,6 +1,6 @@
 <script setup>
 import ChartState from './ChartState.vue'
-import { formatNumber, formatPrecipitation, formatTemperature, formatWind } from '../../utils/formatters'
+import { formatAqi, formatPrecipitation, formatTemperature, formatWind } from '../../utils/formatters'
 
 const props = defineProps({
   weather: { type: Object, default: null },
@@ -73,7 +73,7 @@ function unavailable(value) {
         </article>
         <article class="metric-card aqi-card">
           <span>空气质量 AQI</span>
-          <strong>{{ formatNumber(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
+          <strong>{{ formatAqi(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
           <small>{{ airQuality?.status || (airQualitySummary ? '省级平均 AQI' : '暂无等级') }}</small>
         </article>
       </div>

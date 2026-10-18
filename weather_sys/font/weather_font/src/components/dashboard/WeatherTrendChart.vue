@@ -1,7 +1,7 @@
 <script setup>
 import ChartState from './ChartState.vue'
 import { useEChart } from '../../utils/chart'
-import { formatNumber } from '../../utils/formatters'
+import { formatTemperature } from '../../utils/formatters'
 import {
   AXIS_NAME,
   CATEGORY_AXIS,
@@ -38,7 +38,7 @@ function buildOption() {
       formatter: (items) => {
         if (!items?.length) return ''
         const date = items[0]?.axisValue || '--'
-        const lines = items.map((item) => `${item.marker}${item.seriesName}：${formatNumber(item.value)}°C`)
+        const lines = items.map((item) => `${item.marker}${item.seriesName}：${formatTemperature(item.value)}`)
         return [`<strong>${date}</strong>`, ...lines].join('<br/>')
       },
     },

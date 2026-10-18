@@ -1,7 +1,7 @@
 <script setup>
 import ChartState from './ChartState.vue'
 import { useEChart } from '../../utils/chart'
-import { formatNumber } from '../../utils/formatters'
+import { formatTemperature } from '../../utils/formatters'
 import {
   CHART_COLORS,
   DARK_TOOLTIP,
@@ -37,7 +37,7 @@ function buildOption() {
         const item = items?.[0]
         const row = ordered[item?.dataIndex]
         return row
-          ? `<strong>${row.city}</strong><br/>最高温：${formatNumber(row.maxTemp)}°C<br/>最低温：${formatNumber(row.minTemp)}°C`
+          ? `<strong>${row.city}</strong><br/>最高温：${formatTemperature(row.maxTemp)}<br/>最低温：${formatTemperature(row.minTemp)}`
           : ''
       },
     },
@@ -58,7 +58,7 @@ function buildOption() {
       barMaxWidth: 14,
       data: ordered.map((row) => numericValue(row.maxTemp)),
       itemStyle: { color: CHART_COLORS.warm, borderRadius: [0, 4, 4, 0], shadowBlur: 9, shadowColor: rgba(CHART_COLORS.warm, 0.25) },
-      label: { show: true, position: 'right', distance: 6, color: CHART_COLORS.textSecondary, fontSize: 10, formatter: (params) => `${formatNumber(params.value)}°` },
+      label: { show: true, position: 'right', distance: 6, color: CHART_COLORS.textSecondary, fontSize: 10, formatter: (params) => formatTemperature(params.value) },
       emphasis: { focus: 'series', itemStyle: { color: CHART_COLORS.warmLight } },
     }],
   }

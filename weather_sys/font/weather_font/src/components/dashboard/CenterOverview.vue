@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import ChartState from './ChartState.vue'
 import ChinaMapChart from './ChinaMapChart.vue'
-import { formatNumber, formatDateTime, formatTemperature } from '../../utils/formatters'
+import { formatAqi, formatCount, formatDateTime, formatTemperature } from '../../utils/formatters'
 
 const props = defineProps({
   location: { type: Object, default: null },
@@ -37,7 +37,7 @@ const aqiLabel = computed(() => {
         </div>
         <div class="center-aqi">
           <span>AQI</span>
-          <strong>{{ formatNumber(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
+          <strong>{{ formatAqi(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
           <small>{{ aqiLabel }}</small>
         </div>
       </div>
@@ -64,7 +64,7 @@ const aqiLabel = computed(() => {
       <div class="center-facts">
         <div><span>天气最新日期</span><b>{{ formatDateTime(weather?.date) }}</b></div>
         <div><span>温度区间</span><b>{{ formatTemperature(weather?.minTemp) }} — {{ formatTemperature(weather?.maxTemp) }}</b></div>
-        <div><span>天气记录</span><b>{{ formatNumber(statistics?.weatherRecordCount) }}</b></div>
+        <div><span>天气记录</span><b>{{ formatCount(statistics?.weatherRecordCount) }}</b></div>
         <div><span>AQI 快照</span><b>{{ formatDateTime(airQuality?.createdAt || airQualitySummary?.createdAt) }}</b></div>
       </div>
     </div>

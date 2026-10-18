@@ -1,7 +1,7 @@
 <script setup>
 import ChartState from './ChartState.vue'
 import { useEChart } from '../../utils/chart'
-import { aqiStatusColor, formatNumber } from '../../utils/formatters'
+import { aqiStatusColor, formatAqi } from '../../utils/formatters'
 import {
   CHART_COLORS,
   DARK_TOOLTIP,
@@ -37,7 +37,7 @@ function buildOption() {
         const item = items?.[0]
         const row = ordered[item?.dataIndex]
         return row
-          ? `<strong>${row.city}</strong><br/>AQI：${formatNumber(row.aqi)} · ${row.status || '未知'}`
+          ? `<strong>${row.city}</strong><br/>AQI：${formatAqi(row.aqi)} · ${row.status || '未知'}`
           : ''
       },
     },
@@ -75,7 +75,7 @@ function buildOption() {
         distance: 7,
         color: CHART_COLORS.textSecondary,
         fontSize: 10,
-        formatter: (params) => formatNumber(params.value),
+        formatter: (params) => formatAqi(params.value),
       },
       itemStyle: { shadowBlur: 8, shadowColor: rgba(CHART_COLORS.cyan, 0.16) },
       emphasis: { focus: 'series' },

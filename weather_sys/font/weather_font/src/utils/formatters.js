@@ -1,21 +1,38 @@
 export function formatNumber(value, suffix = '--') {
   if (value === null || value === undefined || value === '') return suffix
-  return typeof value === 'number' ? String(value) : value
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : suffix
+  return value
+}
+
+function formatDecimal(value, decimals, suffix = '--') {
+  if (value === null || value === undefined || value === '') return suffix
+  const number = Number(value)
+  return Number.isFinite(number) ? number.toFixed(decimals) : suffix
 }
 
 export function formatTemperature(value) {
-  const formatted = formatNumber(value)
+  const formatted = formatDecimal(value, 1)
   return formatted === '--' ? formatted : `${formatted}°C`
 }
 
 export function formatWind(value) {
-  const formatted = formatNumber(value)
+  const formatted = formatDecimal(value, 2)
   return formatted === '--' ? formatted : `${formatted} m/s`
 }
 
 export function formatPrecipitation(value) {
-  const formatted = formatNumber(value)
+  const formatted = formatDecimal(value, 2)
   return formatted === '--' ? formatted : `${formatted} mm`
+}
+
+export function formatAqi(value) {
+  return formatDecimal(value, 1)
+}
+
+export function formatCount(value) {
+  if (value === null || value === undefined || value === '') return '--'
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.trunc(number).toLocaleString('en-US') : '--'
 }
 
 export function formatDateTime(value) {

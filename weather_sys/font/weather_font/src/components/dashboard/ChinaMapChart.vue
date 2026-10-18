@@ -17,6 +17,7 @@ import {
 import { mapRegion, setMapRegion } from '../../stores/regionStore'
 import { expandGeoBounds, fitGeoBounds, geoJsonBounds } from '../../utils/mapGeometry'
 import { comparableRegionName } from '../../utils/dashboardRegion'
+import { formatCount, formatTemperature } from '../../utils/formatters'
 
 const props = defineProps({
   location: { type: Object, default: null },
@@ -296,8 +297,8 @@ function mapData() {
 
 function buildGraphic() {
   const node = displayNode.value
-  const recordLabel = props.weather?.recordCount
-    ? '天气记录 ' + props.weather.recordCount
+  const recordLabel = props.weather?.recordCount !== null && props.weather?.recordCount !== undefined
+    ? '天气记录 ' + formatCount(props.weather.recordCount)
     : props.weather?.date
       ? '固定日期 ' + props.weather.date
       : '点击行政区查看真实记录'
@@ -352,7 +353,7 @@ function buildOption() {
         if (!node) return '<strong>' + (params?.name || '--') + '</strong>'
         const hint = isTerminalFeature(feature) ? '已到末级，点击查看数据' : '点击进入下一级边界'
         const weatherHint = mapRegion.district && comparableName(node.name) === comparableName(mapRegion.district) && props.weather
-          ? '<br/><span style="color:#ffe0a3">最高温：' + (props.weather.maxTemp ?? '暂无数据') + '°C · 最低温：' + (props.weather.minTemp ?? '暂无数据') + '°C</span>'
+          ? '<br/><span style="color:#ffe0a3">最高温：' + formatTemperature(props.weather.maxTemp) + ' · 最低温：' + formatTemperature(props.weather.minTemp) + '</span>'
           : ''
         const availabilityHint = isFeatureAvailable(feature) ? hint : '数据库无天气记录，无法进入'
         return '<strong>' + node.name + '</strong>' + weatherHint + '<br/><span style="color:#8edcf4">' + availabilityHint + '</span><br/><span style="color:#8caec2">行政区编码：' + node.adcode + '</span>'

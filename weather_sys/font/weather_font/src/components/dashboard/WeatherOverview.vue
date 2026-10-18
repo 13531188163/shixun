@@ -179,8 +179,10 @@ const props = defineProps({
 }
 
 .temperature-range b {
+  min-width: 0;
   color: var(--text-primary);
-  font-size: 22px;
+  font-size: clamp(17px, 1.45vw, 22px);
+  overflow-wrap: anywhere;
 }
 
 .temperature-range small {
@@ -203,8 +205,10 @@ const props = defineProps({
 }
 
 .weather-detail-row b {
+  min-width: 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: clamp(9px, .72vw, 11px);
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 </style>

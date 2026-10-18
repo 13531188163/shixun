@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import RegionThumbnail from './RegionThumbnail.vue'
 import { featureAdcode, featureName, isTerminalFeature } from '../../utils/administrativeMap'
-import { formatNumber, formatTemperature } from '../../utils/formatters'
+import { formatAqi, formatTemperature } from '../../utils/formatters'
 import { comparableRegionName } from '../../utils/dashboardRegion'
 
 const props = defineProps({
@@ -249,7 +249,7 @@ onBeforeUnmount(() => {
           <div class="region-card-data" aria-label="区域真实数据">
             <span>{{ cardWeather(feature, index)?.weather || (metricFor(feature) ? '暂无天气' : '点击加载') }}</span>
             <b>日最高 {{ formatTemperature(cardWeather(feature, index)?.maxTemp) }}</b>
-            <em>AQI {{ formatNumber(cardAirQuality(feature, index)?.aqi) }}</em>
+            <em>AQI {{ formatAqi(cardAirQuality(feature, index)?.aqi) }}</em>
           </div>
           <span class="enter-region">{{ isTerminalFeature(feature) ? '查看数据' : '单击进入' }}</span>
         </article>

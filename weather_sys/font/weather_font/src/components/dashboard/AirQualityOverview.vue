@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import ChartState from './ChartState.vue'
-import { aqiStatusClass, formatDateTime, formatNumber } from '../../utils/formatters'
+import { aqiStatusClass, formatAqi, formatDateTime } from '../../utils/formatters'
 
 const props = defineProps({
   airQuality: { type: Object, default: null },
@@ -43,7 +43,7 @@ const gaugeStyle = computed(() => {
     <div class="air-quality-overview">
       <div class="aqi-gauge" :style="gaugeStyle">
         <div class="aqi-gauge-inner">
-          <strong>{{ formatNumber(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
+          <strong>{{ formatAqi(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
           <span>AQI</span>
         </div>
       </div>
