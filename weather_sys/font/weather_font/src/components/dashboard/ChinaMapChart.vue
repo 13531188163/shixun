@@ -375,25 +375,10 @@ function buildOption() {
         itemStyle: { areaColor: 'rgba(12, 75, 110, 0.62)', borderColor: 'rgba(58, 194, 235, 0.55)', borderWidth: 0.5 },
         label: { show: false },
       },
-      {
-        // A second copy of the same real GeoJSON creates a restrained 2.5D
-        // base. It is an illustration layer, not fabricated elevation data.
-        map: mapName, roam: false, silent: true,
-        layoutCenter: ['50%', '54%'], layoutSize: `${fit.layoutSize}%`, zoom: fit.zoom,
-        boundingCoords: fit.boundingCoords || undefined, aspectScale: 1,
-        selectedMode: false,
-        itemStyle: { areaColor: 'rgba(1, 11, 27, 0.9)', borderColor: 'rgba(11, 94, 145, 0.76)', borderWidth: 1.2, shadowColor: 'rgba(0, 178, 241, 0.34)', shadowBlur: 18 },
-        label: { show: false },
-      },
     ],
     series: [
       {
-        name: '行政区立体底座', type: 'map', map: mapName, geoIndex: 2, silent: true, z: 1,
-        data: data.map((item) => ({ name: item.name, adcode: item.adcode, itemStyle: { areaColor: 'rgba(1, 12, 28, 0.92)', borderColor: 'rgba(15, 106, 157, 0.72)', borderWidth: 1.1 } })),
-        label: { show: false },
-      },
-      {
-        name: '行政区边界', type: 'map', map: mapName, geoIndex: 0, roam: false, silent: false, z: 5, data,
+        name: '行政区边界', type: 'map', map: mapName, geoIndex: 0, roam: false, silent: false, data,
         label: { show: false }, itemStyle: { areaColor: 'rgba(5, 34, 64, 0.2)', borderColor: 'rgba(76, 202, 245, 0.6)', borderWidth: 0.7 },
         emphasis: { itemStyle: { areaColor: 'rgba(38, 187, 232, 0.52)' } },
       },
