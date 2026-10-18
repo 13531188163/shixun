@@ -211,41 +211,70 @@ def get_weather_history_by_date(
     """Return one stable representative row for each of the latest dates.
 
     ``weather_data`` has multiple district rows per city and date.  A window
-    function performs the de-duplication in MySQL, so the service does not
-    need to guess how many district rows to over-fetch from the large table.
+    function is not required here: an anti-join keeps the query compatible
+    with MySQL installations that predate window-function support.
     """
 
     _require_city(city)
     _validate_history_limit(days)
-    clauses, params = _location_filters(province=province, city=city, district=district)
+    clauses, location_params = _location_filters(province=province, city=city, district=district)
+    outer_clauses = [
+        clause.replace("province IN", "w1.province IN")
+        .replace("city IN", "w1.city IN")
+        .replace("district =", "w1.district =")
+        for clause in clauses
+    ]
+    inner_clauses = [
+        clause.replace("province IN", "w2.province IN")
+        .replace("city IN", "w2.city IN")
+        .replace("district =", "w2.district =")
+        for clause in clauses
+    ]
+    outer_params = list(location_params)
+    inner_params = list(location_params)
     if end_date is not None:
-        clauses.append(
-            "STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') "
+        outer_clauses.append(
+            "STR_TO_DATE(NULLIF(TRIM(w1.date), ''), '%%Y-%%m-%%d') "
             "<= STR_TO_DATE(%s, '%%Y-%%m-%%d')"
         )
-        params.append(end_date)
-    where_sql = " AND ".join(clauses)
+        inner_clauses.append(
+            "STR_TO_DATE(NULLIF(TRIM(w2.date), ''), '%%Y-%%m-%%d') "
+            "<= STR_TO_DATE(%s, '%%Y-%%m-%%d')"
+        )
+        outer_params.append(end_date)
+        inner_params.append(end_date)
+    valid_outer = (
+        "w1.date IS NOT NULL AND TRIM(w1.date) <> '' "
+        "AND w1.date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+    )
+    valid_inner = (
+        "w2.date IS NOT NULL AND TRIM(w2.date) <> '' "
+        "AND w2.date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+    )
+    outer_select = ", ".join(f"w1.{column}" for column in WEATHER_COLUMNS)
+    district_rank_outer = "CASE WHEN w1.district IS NULL OR TRIM(w1.district) = '' THEN 1 ELSE 0 END"
+    district_rank_inner = "CASE WHEN w2.district IS NULL OR TRIM(w2.district) = '' THEN 1 ELSE 0 END"
+    district_name_outer = "COALESCE(NULLIF(TRIM(w1.district), ''), '')"
+    district_name_inner = "COALESCE(NULLIF(TRIM(w2.district), ''), '')"
     sql = (
-        "SELECT "
-        f"{_WEATHER_SELECT} "
-        "FROM ("
-        "SELECT "
-        f"{_WEATHER_SELECT}, "
-        "ROW_NUMBER() OVER ("
-        "PARTITION BY date "
-        "ORDER BY CASE WHEN district IS NULL OR TRIM(district) = '' THEN 1 ELSE 0 END ASC, "
-        "district ASC, id ASC"
-        ") AS representative_rank "
-        "FROM weather_data "
-        f"WHERE {where_sql} "
-        "AND date IS NOT NULL AND TRIM(date) <> '' "
-        "AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
-        ") AS ranked "
-        "WHERE representative_rank = 1 "
-        "ORDER BY STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') DESC, id ASC "
+        f"SELECT {outer_select} FROM weather_data AS w1 "
+        f"WHERE {' AND '.join([*outer_clauses, valid_outer])} "
+        "AND NOT EXISTS ("
+        "SELECT 1 FROM weather_data AS w2 "
+        f"WHERE {' AND '.join([*inner_clauses, valid_inner])} "
+        "AND w2.date = w1.date "
+        "AND ("
+        f"{district_rank_inner} < {district_rank_outer} OR "
+        f"({district_rank_inner} = {district_rank_outer} AND ("
+        f"{district_name_inner} < {district_name_outer} OR "
+        f"({district_name_inner} = {district_name_outer} AND w2.id < w1.id)"
+        "))"
+        ")"
+        ") "
+        "ORDER BY STR_TO_DATE(NULLIF(TRIM(w1.date), ''), '%%Y-%%m-%%d') DESC, w1.id ASC "
         "LIMIT %s"
     )
-    params.append(days)
+    params = [*outer_params, *inner_params, days]
     with connection_scope() as connection:
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
@@ -298,13 +327,14 @@ def get_province_weather_overview(province: str, date: str | None = None) -> dic
             )
 
 
-def _national_weather_ctes(where_sql: str) -> str:
-    """Build hierarchy-aware daily weather CTEs for the national scope.
+def _national_weather_daily_sql(where_sql: str) -> str:
+    """Build hierarchy-aware daily weather SQL without requiring MySQL CTEs.
 
     ``weather_data`` is stored at district level.  The national value is
     therefore calculated as district-day mean → city-day mean → province-day
-    mean → national-day mean, so rows from regions with more districts do not
-    receive a larger weight.
+    mean. Nested derived tables keep the query compatible with the MySQL
+    versions supported by the project while preventing regions with more
+    districts from receiving a larger weight.
     """
 
     max_temp = _numeric_expression("max_temp", temperature=True)
@@ -318,7 +348,8 @@ def _national_weather_ctes(where_sql: str) -> str:
         f"{district_key} AS district, date, "
         f"AVG({max_temp}) AS max_temp, AVG({min_temp}) AS min_temp, "
         f"AVG({avg_wind}) AS avg_wind, AVG({max_wind}) AS max_wind, "
-        f"AVG({precipitation}) AS total_precip "
+        f"AVG({precipitation}) AS total_precip, COUNT(*) AS source_records, "
+        "1 AS district_units "
         "FROM weather_data "
         f"WHERE {where_sql} "
         f"GROUP BY province, city, {district_key}, date"
@@ -326,30 +357,31 @@ def _national_weather_ctes(where_sql: str) -> str:
     city_daily = (
         "SELECT province, city, date, AVG(max_temp) AS max_temp, "
         "AVG(min_temp) AS min_temp, AVG(avg_wind) AS avg_wind, "
-        "AVG(max_wind) AS max_wind, AVG(total_precip) AS total_precip "
+        "AVG(max_wind) AS max_wind, AVG(total_precip) AS total_precip, "
+        "SUM(source_records) AS source_records, SUM(district_units) AS district_units, "
+        "COUNT(*) AS city_units "
         f"FROM ({district_daily}) AS district_daily "
         "GROUP BY province, city, date"
     )
     province_daily = (
         "SELECT province, date, AVG(max_temp) AS max_temp, "
         "AVG(min_temp) AS min_temp, AVG(avg_wind) AS avg_wind, "
-        "AVG(max_wind) AS max_wind, AVG(total_precip) AS total_precip "
+        "AVG(max_wind) AS max_wind, AVG(total_precip) AS total_precip, "
+        "SUM(source_records) AS source_records, SUM(district_units) AS district_units, "
+        "SUM(city_units) AS city_units, COUNT(*) AS province_units "
         f"FROM ({city_daily}) AS city_daily "
         "GROUP BY province, date"
     )
     national_daily = (
         "SELECT date, AVG(max_temp) AS max_temp, AVG(min_temp) AS min_temp, "
         "AVG(avg_wind) AS avg_wind, AVG(max_wind) AS max_wind, "
-        "AVG(total_precip) AS total_precip "
+        "AVG(total_precip) AS total_precip, SUM(source_records) AS source_records, "
+        "SUM(district_units) AS district_count, SUM(city_units) AS city_count, "
+        "SUM(province_units) AS province_count "
         f"FROM ({province_daily}) AS province_daily "
         "GROUP BY date"
     )
-    return (
-        "district_daily AS (" + district_daily + "), "
-        "city_daily AS (" + city_daily + "), "
-        "province_daily AS (" + province_daily + "), "
-        "national_daily AS (" + national_daily + ")"
-    )
+    return national_daily
 
 
 def _query_national_weather_summary(cursor: Any, selected_date: str) -> dict[str, Any] | None:
@@ -357,20 +389,19 @@ def _query_national_weather_summary(cursor: Any, selected_date: str) -> dict[str
         "date = %s AND date IS NOT NULL AND TRIM(date) <> '' "
         "AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
     )
-    ctes = _national_weather_ctes(date_clause)
+    daily_sql = _national_weather_daily_sql(date_clause)
     sql = (
-        f"WITH {ctes} "
         "SELECT MAX(national_daily.date) AS date, "
-        "(SELECT COUNT(*) FROM district_daily) AS record_count, "
-        "(SELECT COUNT(*) FROM city_daily) AS city_count, "
-        "(SELECT COUNT(*) FROM district_daily) AS district_count, "
+        "MAX(national_daily.source_records) AS record_count, "
+        "MAX(national_daily.city_count) AS city_count, "
+        "MAX(national_daily.district_count) AS district_count, "
         "MAX(national_daily.max_temp) AS max_temp, "
         "MIN(national_daily.min_temp) AS min_temp, "
         "AVG(national_daily.avg_wind) AS avg_wind, "
         "MAX(national_daily.max_wind) AS max_wind, "
         "AVG(national_daily.total_precip) AS total_precip, "
         "'全国多种天气' AS weather "
-        "FROM national_daily"
+        f"FROM ({daily_sql}) AS national_daily"
     )
     cursor.execute(sql, [selected_date])
     row = cursor.fetchone()
@@ -411,14 +442,12 @@ def get_national_weather_trend(
     if end_date is not None:
         clauses.append("STR_TO_DATE(date, '%%Y-%%m-%%d') <= STR_TO_DATE(%s, '%%Y-%%m-%%d')")
         params.append(end_date)
-    ctes = _national_weather_ctes(" AND ".join(clauses))
+    daily_sql = _national_weather_daily_sql(" AND ".join(clauses))
     sql = (
-        f"WITH {ctes} "
-        "SELECT date, COUNT(*) AS record_count, MAX(max_temp) AS max_temp, "
-        "MIN(min_temp) AS min_temp, AVG(avg_wind) AS avg_wind, "
-        "MAX(max_wind) AS max_wind, AVG(total_precip) AS total_precip, "
+        "SELECT date, source_records AS record_count, max_temp, min_temp, "
+        "avg_wind, max_wind, total_precip, "
         "'全国多种天气' AS weather "
-        "FROM national_daily GROUP BY date "
+        f"FROM ({daily_sql}) AS national_daily "
         "ORDER BY STR_TO_DATE(date, '%%Y-%%m-%%d') DESC LIMIT %s"
     )
     params.append(days)

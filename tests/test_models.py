@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import os
 import unittest
+from contextlib import contextmanager
+from unittest.mock import patch
 
 from weather_sys.backend.models import air_quality_model, weather_model, wind_model
 
@@ -32,6 +34,50 @@ class ModelValidationTests(unittest.TestCase):
             air_quality_model.get_latest_air_quality("")
         with self.assertRaises(ValueError):
             wind_model.get_latest_wind("")
+
+    def test_national_weather_sql_avoids_cte_requirement(self):
+        sql = weather_model._national_weather_daily_sql("date = %s")
+        self.assertNotIn("WITH ", sql.upper())
+        self.assertIn("GROUP BY province, city", sql)
+        self.assertIn("GROUP BY province, date", sql)
+        self.assertIn("GROUP BY date", sql)
+
+    def test_city_trend_sql_avoids_window_function(self):
+        class Cursor:
+            def __init__(self):
+                self.sql = ""
+                self.params = []
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def execute(self, sql, params):
+                self.sql = sql
+                self.params = params
+
+            def fetchall(self):
+                return []
+
+        cursor = Cursor()
+
+        class Connection:
+            def cursor(self):
+                return cursor
+
+            def close(self):
+                return None
+
+        @contextmanager
+        def connection_scope_stub():
+            yield Connection()
+
+        with patch.object(weather_model, "connection_scope", connection_scope_stub):
+            self.assertEqual(weather_model.get_weather_history_by_date("北京", days=2), [])
+        self.assertNotIn("ROW_NUMBER", cursor.sql.upper())
+        self.assertIn("NOT EXISTS", cursor.sql.upper())
 
 
 @unittest.skipUnless(RUN_DB_TESTS, "set RUN_DB_TESTS=1 for MySQL read-only integration checks")
