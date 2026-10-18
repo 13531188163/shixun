@@ -394,6 +394,7 @@ useEChart(chartElement, buildOption, [
         <span v-if="index" class="breadcrumb-separator" aria-hidden="true">/</span>
         <button type="button" :class="['breadcrumb-item', { active: index === navigation.length - 1 }]" :aria-current="index === navigation.length - 1 ? 'page' : undefined" @click="navigateTo(index)">{{ item.name }}</button>
       </template>
+      <button v-if="navigation.length > 1" type="button" class="map-reset-button" @click="navigateTo(0)">返回全国</button>
     </nav>
     <div class="map-canvas">
       <div v-if="mapReady" ref="chartElement" class="echart china-map-chart" aria-label="可逐级钻取的全国行政区天气与空气质量地图" />
@@ -428,6 +429,8 @@ useEChart(chartElement, buildOption, [
 .breadcrumb-item { padding: 2px 4px; color: var(--text-secondary); font: inherit; background: transparent; border: 0; border-radius: 3px; cursor: pointer; }
 .breadcrumb-item:hover, .breadcrumb-item:focus-visible { color: var(--text-primary); background: rgb(39 177 223 / 18%); outline: none; }
 .breadcrumb-item.active { color: #ffe0a3; font-weight: 700; }
+.map-reset-button { margin-left: auto; padding: 3px 8px; color: #d9f7ff; font: inherit; background: rgb(7 79 126 / 78%); border: 1px solid rgb(58 196 236 / 68%); border-radius: 3px; cursor: pointer; }
+.map-reset-button:hover, .map-reset-button:focus-visible { color: #fff1c8; border-color: #ffc76b; outline: none; box-shadow: 0 0 9px rgb(255 183 75 / 24%); }
 .map-canvas { position: relative; display: flex; min-height: clamp(300px, 38vh, 650px); flex: 1; overflow: hidden; background: radial-gradient(ellipse 66% 62% at 49% 48%, rgb(14 99 151 / 34%), transparent 70%), radial-gradient(circle at 51% 48%, rgb(38 190 225 / 14%), transparent 38%), repeating-linear-gradient(118deg, transparent 0 21px, rgb(61 147 187 / 5%) 22px, transparent 23px 46px), linear-gradient(180deg, #031a35 0%, #021229 58%, #020d20 100%); border: 1px solid rgb(34 163 220 / 28%); border-radius: 5px; box-shadow: inset 0 0 32px rgb(0 95 160 / 20%), 0 0 28px rgb(0 190 255 / 12%); }
 .map-canvas::before { position: absolute; z-index: 0; inset: 0; pointer-events: none; content: ''; opacity: 0.46; background: repeating-linear-gradient(90deg, transparent 0 54px, rgb(82 176 217 / 5%) 55px, transparent 56px 110px), repeating-linear-gradient(0deg, transparent 0 54px, rgb(82 176 217 / 4%) 55px, transparent 56px 110px); mask-image: radial-gradient(ellipse at center, #000 24%, transparent 84%); }
 .echart, .china-map-chart { position: relative; z-index: 1; width: 100%; height: 100%; min-height: 0; flex: 1 1 auto; }

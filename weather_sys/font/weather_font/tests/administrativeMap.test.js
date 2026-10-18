@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import {
+  ADMIN_MAP_SOURCE,
   NATIONAL_ADCODE,
   clearAdministrativeMapCache,
   featureLevel,
@@ -134,6 +135,29 @@ test('loads national and child maps by adcode and reuses the in-flight promise',
   await loadAdministrativeMap('370000', { fetchImpl })
 
   assert.deepEqual(calls, ['/maps/china.json', `${mapSourceUrl('370000')}`])
+})
+
+test('uses real province resources for national-to-province navigation and keeps special-region sources explicit', () => {
+  assert.equal(mapSourceUrl(NATIONAL_ADCODE), '/maps/china.json')
+  assert.equal(mapSourceUrl('510000'), `${ADMIN_MAP_SOURCE}/510000_full.json`)
+  assert.equal(mapSourceUrl('110000'), `${ADMIN_MAP_SOURCE}/110000_full.json`)
+  assert.equal(mapSourceUrl('810000'), `${ADMIN_MAP_SOURCE}/810000_full.json`)
+  assert.equal(mapSourceUrl('820000'), `${ADMIN_MAP_SOURCE}/820000_full.json`)
+  assert.equal(mapSourceUrl('710000'), TAIWAN_MAP_PATH)
+})
+
+test('does not retain a failed province resource in the cache so retry can recover', async () => {
+  clearAdministrativeMapCache()
+  let calls = 0
+  const fetchImpl = async (url) => {
+    calls += 1
+    if (url === `${mapSourceUrl('510000')}`) return { ok: false, status: 503, json: async () => ({}) }
+    return { ok: true, json: async () => ({ type: 'FeatureCollection', features: [feature(510000, '四川省', 'province', 21)] }) }
+  }
+
+  await assert.rejects(loadAdministrativeMap('510000', { fetchImpl }), /请求失败/)
+  await assert.rejects(loadAdministrativeMap('510000', { fetchImpl }), /请求失败/)
+  assert.equal(calls, 2)
 })
 
 test('rejects malformed or invalid administrative codes', async () => {
