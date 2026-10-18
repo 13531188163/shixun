@@ -11,7 +11,7 @@ from pymysql.cursors import DictCursor
 from flask import has_app_context, current_app
 
 from ..config import Settings, settings
-from .exceptions import DatabaseUnavailableError
+from .exceptions import DatabaseQueryTimeoutError, DatabaseUnavailableError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -67,6 +67,16 @@ def connection_scope() -> Generator:
     connection = get_connection()
     try:
         yield connection
+    except pymysql.OperationalError as exc:
+        error_code = exc.args[0] if exc.args else None
+        if error_code in {1205, 2013}:
+            LOGGER.error("MySQL read query timed out (code=%s)", error_code)
+            raise DatabaseQueryTimeoutError() from exc
+        LOGGER.error("MySQL query failed (code=%s)", error_code)
+        raise DatabaseUnavailableError("database query failed") from exc
+    except pymysql.MySQLError as exc:
+        LOGGER.error("MySQL query failed")
+        raise DatabaseUnavailableError("database query failed") from exc
     finally:
         connection.close()
 

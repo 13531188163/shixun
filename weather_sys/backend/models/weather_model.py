@@ -125,7 +125,7 @@ def get_latest_weather(
     sql = (
         f"SELECT {_WEATHER_SELECT} FROM weather_data "
         f"WHERE {where_sql} "
-        "ORDER BY STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') DESC, "
+        "ORDER BY date DESC, "
         "CASE WHEN district IS NULL OR TRIM(district) = '' THEN 1 ELSE 0 END ASC, "
         "district ASC, id ASC "
         "LIMIT 1"
@@ -158,7 +158,7 @@ def get_weather_dates(
     sql = (
         "SELECT DISTINCT date FROM weather_data "
         f"WHERE {' AND '.join(clauses)} "
-        "ORDER BY STR_TO_DATE(date, '%%Y-%%m-%%d') DESC "
+        "ORDER BY date DESC "
         "LIMIT %s"
     )
     params.append(limit)
@@ -191,7 +191,7 @@ def get_weather_history(
     sql = (
         f"SELECT {_WEATHER_SELECT} FROM weather_data "
         f"WHERE {where_sql} "
-        "ORDER BY STR_TO_DATE(NULLIF(TRIM(date), ''), '%%Y-%%m-%%d') DESC, id DESC "
+        "ORDER BY date DESC, id DESC "
         "LIMIT %s"
     )
     params.append(requested_limit)
@@ -232,17 +232,6 @@ def get_weather_history_by_date(
     ]
     outer_params = list(location_params)
     inner_params = list(location_params)
-    if end_date is not None:
-        outer_clauses.append(
-            "STR_TO_DATE(NULLIF(TRIM(w1.date), ''), '%%Y-%%m-%%d') "
-            "<= STR_TO_DATE(%s, '%%Y-%%m-%%d')"
-        )
-        inner_clauses.append(
-            "STR_TO_DATE(NULLIF(TRIM(w2.date), ''), '%%Y-%%m-%%d') "
-            "<= STR_TO_DATE(%s, '%%Y-%%m-%%d')"
-        )
-        outer_params.append(end_date)
-        inner_params.append(end_date)
     valid_outer = (
         "w1.date IS NOT NULL AND TRIM(w1.date) <> '' "
         "AND w1.date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
@@ -251,6 +240,33 @@ def get_weather_history_by_date(
         "w2.date IS NOT NULL AND TRIM(w2.date) <> '' "
         "AND w2.date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
     )
+    selected_date_clauses = [
+        clause.replace("province IN", "w_dates.province IN")
+        .replace("city IN", "w_dates.city IN")
+        .replace("district =", "w_dates.district =")
+        for clause in clauses
+    ]
+    selected_date_clauses.extend([
+        "w_dates.date IS NOT NULL",
+        "TRIM(w_dates.date) <> ''",
+        "w_dates.date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'",
+    ])
+    selected_date_params = list(location_params)
+    if end_date is not None:
+        selected_date_clauses.append("w_dates.date <= %s")
+        selected_date_params.append(end_date)
+    selected_dates_sql = (
+        "SELECT DISTINCT w_dates.date AS selected_date FROM weather_data AS w_dates "
+        f"WHERE {' AND '.join(selected_date_clauses)} "
+        "ORDER BY w_dates.date DESC LIMIT %s"
+    )
+    outer_clauses.append(
+        "w1.date IN (SELECT selected_date FROM ("
+        f"{selected_dates_sql}"
+        ") AS selected_weather_dates)"
+    )
+    outer_params.extend(selected_date_params)
+    outer_params.append(days)
     outer_select = ", ".join(f"w1.{column}" for column in WEATHER_COLUMNS)
     district_rank_outer = "CASE WHEN w1.district IS NULL OR TRIM(w1.district) = '' THEN 1 ELSE 0 END"
     district_rank_inner = "CASE WHEN w2.district IS NULL OR TRIM(w2.district) = '' THEN 1 ELSE 0 END"
@@ -271,10 +287,9 @@ def get_weather_history_by_date(
         "))"
         ")"
         ") "
-        "ORDER BY STR_TO_DATE(NULLIF(TRIM(w1.date), ''), '%%Y-%%m-%%d') DESC, w1.id ASC "
-        "LIMIT %s"
+        "ORDER BY w1.date DESC, w1.id ASC"
     )
-    params = [*outer_params, *inner_params, days]
+    params = [*outer_params, *inner_params]
     with connection_scope() as connection:
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
@@ -306,7 +321,7 @@ def get_province_weather_overview(province: str, date: str | None = None) -> dic
     date_clause = "date IS NOT NULL AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
     if date is None:
         sql_date = (
-            "SELECT DATE_FORMAT(MAX(STR_TO_DATE(date, '%%Y-%%m-%%d')), '%%Y-%%m-%%d') AS selected_date "
+            "SELECT MAX(date) AS selected_date "
             f"FROM weather_data WHERE {province_clause} AND {date_clause}"
         )
         with connection_scope() as connection:

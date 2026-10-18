@@ -25,3 +25,10 @@ class DatabaseUnavailableError(AppException):
 
     def __init__(self, message: str = "database unavailable") -> None:
         super().__init__(message=message, status_code=500)
+
+
+class DatabaseQueryTimeoutError(AppException):
+    """Raised when MySQL aborts a read because it exceeded its time limit."""
+
+    def __init__(self, message: str = "database query timeout") -> None:
+        super().__init__(message=message, status_code=504)

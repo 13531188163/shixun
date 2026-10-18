@@ -26,8 +26,11 @@ request.interceptors.response.use(
   },
   (error) => {
     const apiResponse = error.response?.data
+    const timeoutMessage = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT'
+      ? '查询超时，请重试'
+      : ''
     const normalizedError = new Error(
-      apiResponse?.message || error.message || 'API request failed',
+      apiResponse?.message || timeoutMessage || error.message || 'API request failed',
     )
     normalizedError.response = error.response
     normalizedError.apiResponse = apiResponse
