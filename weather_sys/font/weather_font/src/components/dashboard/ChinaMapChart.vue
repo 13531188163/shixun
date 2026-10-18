@@ -327,7 +327,7 @@ function buildOption() {
       {
         map: mapName, roam: false, silent: false,
         layoutCenter: fit.center, layoutSize: `${fit.layoutSize}%`, zoom: fit.zoom,
-        boundingCoords: fit.boundingCoords || undefined, aspectScale: 0.75,
+        boundingCoords: fit.boundingCoords || undefined, aspectScale: 1,
         selectedMode: false,
         itemStyle: { areaColor: 'rgba(8, 48, 82, 0.54)', borderColor: 'rgba(73, 198, 238, 0.84)', borderWidth: 0.95, shadowColor: level === 'country' ? 'rgba(20, 192, 255, 0.66)' : 'rgba(255, 173, 70, 0.38)', shadowBlur: level === 'country' ? 19 : 22 },
         emphasis: { itemStyle: { areaColor: 'rgba(37, 161, 220, 0.62)', borderColor: '#d6f8ff', borderWidth: 1.35 }, label: { show: true, color: '#f4fdff', fontSize: level === 'country' ? 10 : 11, fontWeight: 700 } },
@@ -488,6 +488,14 @@ useEChart(chartElement, buildOption, [
 .map-shell.is-expanded .map-canvas { min-height: 0; }
 .map-shell.is-expanded :deep(.region-carousel) { max-height: 148px; overflow: auto; }
 .map-shell.is-expanded .map-source { display: none; }
+.map-shell :deep(.region-carousel) { padding: 5px 8px 6px; }
+.map-shell :deep(.carousel-heading) { margin-bottom: 4px; }
+.map-shell :deep(.region-card) { gap: 3px; padding: 4px; }
+.map-shell :deep(.region-thumbnail) { height: 42px !important; }
+.map-shell :deep(.region-card-data) { gap: 1px 3px; font-size: 7px; }
+.map-shell :deep(.region-card-data b) { font-size: 9px; }
+.map-shell :deep(.region-card-data em) { font-size: 7px; }
+.map-shell :deep(.enter-region) { padding: 1px 4px; }
 .map-canvas { position: relative; display: flex; min-height: 0; flex: 1; overflow: hidden; background: radial-gradient(ellipse 66% 62% at 49% 48%, rgb(14 99 151 / 34%), transparent 70%), radial-gradient(circle at 51% 48%, rgb(38 190 225 / 14%), transparent 38%), repeating-linear-gradient(118deg, transparent 0 21px, rgb(61 147 187 / 5%) 22px, transparent 23px 46px), linear-gradient(180deg, #031a35 0%, #021229 58%, #020d20 100%); border: 1px solid rgb(34 163 220 / 28%); border-radius: 5px; box-shadow: inset 0 0 32px rgb(0 95 160 / 20%), 0 0 28px rgb(0 190 255 / 12%); }
 .map-canvas::before { position: absolute; z-index: 0; inset: 0; pointer-events: none; content: ''; opacity: 0.46; background: repeating-linear-gradient(90deg, transparent 0 54px, rgb(82 176 217 / 5%) 55px, transparent 56px 110px), repeating-linear-gradient(0deg, transparent 0 54px, rgb(82 176 217 / 4%) 55px, transparent 56px 110px); mask-image: radial-gradient(ellipse at center, #000 24%, transparent 84%); }
 .echart, .china-map-chart { position: relative; z-index: 1; width: 100%; height: 100%; min-height: 0; flex: 1 1 auto; }

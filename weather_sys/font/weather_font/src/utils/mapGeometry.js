@@ -1,4 +1,4 @@
-const DEFAULT_MARGIN = 0.84
+const DEFAULT_MARGIN = 0.92
 
 function visitCoordinates(coordinates, visit) {
   if (!Array.isArray(coordinates) || !coordinates.length) return
@@ -56,9 +56,7 @@ export function fitGeoBounds(bounds, viewport, margin = DEFAULT_MARGIN) {
     return { layoutSize: 84, zoom: 1, center: ['50%', '50%'], boundingCoords: null }
   }
 
-  // ECharts GeoJSON maps use the default aspectScale 0.75. Using the same
-  // scale here keeps the computed box consistent with the rendered map.
-  const aspect = Math.max(bounds.width / bounds.height * 0.75, Number.EPSILON)
+  const aspect = Math.max(bounds.width / bounds.height, Number.EPSILON)
   const base = Math.min(width, height)
   const requiredSize = aspect >= 1
     ? Math.min(width, height * aspect)
