@@ -50,6 +50,11 @@ function formatDays(value) {
   return number === null ? '暂无数据' : String(Math.round(number))
 }
 
+function cityValidDays(city) {
+  const coverage = result.value?.dataCoverage?.cities?.find((item) => item.key === city?.key)
+  return formatDays(coverage?.validDays)
+}
+
 const colors = ['#ff6b7a', '#38bdf8', '#ffc04d', '#34e0a1']
 const color = (index) => colors[index % colors.length]
 const cityLabel = (city) => (city ? `${city.province} · ${city.city}` : '暂无地区')
@@ -362,6 +367,21 @@ onMounted(async () => {
                 </tbody>
               </table>
             </div>
+            <div class="comparison-coverage" aria-label="数据覆盖说明">
+              <div class="coverage-row">
+                <strong>有效观测日</strong>
+                <span v-for="city in cities" :key="city.key">{{ cityLabel(city) }}：{{ cityValidDays(city) }} 天</span>
+              </div>
+              <div class="coverage-row">
+                <strong>可比范围</strong>
+                <span>共同可比：{{ formatDays(result.dataCoverage.commonDays) }} 天</span>
+                <span>天气日期：{{ result.weatherPeriod.startDate }} 至 {{ result.weatherPeriod.endDate }}</span>
+              </div>
+              <div class="coverage-row coverage-note">
+                <strong>AQI来源</strong>
+                <span>air_quality_data 固定快照；created_at 为入库时间，不代表天气观测时间。</span>
+              </div>
+            </div>
           </DashboardPanel>
 
           <DashboardPanel title="区域对比分析结论" subtitle="依据共同可比天气日期与独立 AQI 快照动态生成">
@@ -407,14 +427,18 @@ onMounted(async () => {
 .radar-fallback-table { width: 100%; border-collapse: collapse; color: var(--text-secondary); font-size: 10px; }
 .radar-fallback-table th, .radar-fallback-table td { padding: 5px 6px; text-align: center; border: 1px solid rgb(45 126 177 / 34%); }
 .radar-fallback-table th { color: #cdeeff; background: rgb(8 58 106 / 70%); }
-.bottom-grid { display: grid; min-width: 0; grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr); gap: 10px; }
-.bottom-grid :deep(.dashboard-panel) { min-height: 220px; }
+.bottom-grid { display: grid; min-width: 0; align-items: start; grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr); gap: 10px; }
+.bottom-grid :deep(.dashboard-panel) { min-height: 0; align-self: start; }
 .compare-table-wrap { overflow-x: auto; }
 .compare-table-wrap table { width: 100%; min-width: 720px; border-collapse: collapse; color: var(--text-secondary); font-size: 10px; }
 .compare-table-wrap th, .compare-table-wrap td { padding: 6px 6px; text-align: center; border: 1px solid rgb(45 126 177 / 40%); white-space: nowrap; }
 .compare-table-wrap th { color: #cdeeff; background: rgb(8 58 106 / 80%); }
 .compare-table-wrap td:first-child { color: var(--text-primary); text-align: left; }
 .table-city-mark { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; }
+.comparison-coverage { display: grid; gap: 5px; margin-top: 8px; padding: 7px 8px; color: var(--text-muted); font-size: 10px; line-height: 1.45; background: rgb(4 36 73 / 52%); border: 1px solid rgb(36 145 211 / 30%); border-radius: 5px; }
+.coverage-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 12px; }
+.coverage-row strong { color: var(--accent-cyan); font-weight: 600; }
+.coverage-note { color: var(--text-muted); }
 .conclusions { display: grid; gap: 6px; }
 .conclusion-item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 9px; align-items: start; padding: 7px 8px; color: var(--text-secondary); background: rgb(7 49 94 / 55%); border: 1px solid rgb(36 145 211 / 42%); border-radius: 6px; }
 .conclusion-icon { display: grid; min-height: 28px; place-items: center; font-size: 15px; font-weight: 700; background: rgb(12 94 157 / 35%); border-radius: 50%; }
