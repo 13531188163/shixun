@@ -20,8 +20,12 @@ class OpenApiContractTests(unittest.TestCase):
         )
 
     def test_swagger_and_openapi_entries_are_available(self):
-        self.assertEqual(self.client.get("/api/docs").status_code, 200)
-        self.assertEqual(self.client.get("/admin").status_code, 200)
+        swagger = self.client.get("/api/docs")
+        admin = self.client.get("/admin")
+        self.assertEqual(swagger.status_code, 200)
+        self.assertIn(b"swagger-ui", swagger.data)
+        self.assertEqual(admin.status_code, 200)
+        self.assertIn(b"WeatherDemo API", admin.data)
         response = self.client.get("/openapi.json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["openapi"], "3.0.3")

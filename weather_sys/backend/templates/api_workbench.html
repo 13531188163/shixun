@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WeatherDemo API 工作台</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    :root { color-scheme: dark; --bg:#071329; --panel:#0d2242; --panel2:#102b50; --line:#245681; --cyan:#65ddff; --text:#eaf6ff; --muted:#91abc5; --green:#42d99b; --orange:#ffbc6b; --red:#ff7784; }
+    * { box-sizing:border-box; }
+    html,body { height:100%; }
+    body { margin:0; overflow:hidden; background:radial-gradient(circle at 50% -20%,#174676 0,#071329 52%,#030914 100%); color:var(--text); font:14px/1.5 system-ui,"Microsoft YaHei",sans-serif; }
+    button,input,select,textarea { font:inherit; }
+    button { cursor:pointer; }
+    .app { display:grid; height:100vh; grid-template-columns:250px minmax(0,1fr); }
+    .sidebar { display:flex; min-width:0; flex-direction:column; padding:20px 14px; background:linear-gradient(180deg,#0b2344,#061329); border-right:1px solid var(--line); }
+    .brand { padding:0 10px 20px; color:var(--cyan); font-size:18px; font-weight:700; }
+    .brand small { display:block; margin-top:3px; color:var(--muted); font-size:11px; font-weight:400; }
+    .nav-search { width:100%; margin-bottom:12px; padding:9px 10px; color:var(--text); background:#071a34; border:1px solid #204c75; border-radius:6px; outline:none; }
+    .nav { display:flex; min-height:0; flex:1; flex-direction:column; gap:4px; overflow:auto; }
+    .nav-group { margin-top:12px; padding:5px 10px; color:var(--muted); font-size:10px; letter-spacing:.12em; text-transform:uppercase; }
+    .nav-item { display:flex; width:100%; align-items:center; justify-content:space-between; padding:9px 10px; color:#b7d4e9; text-align:left; background:transparent; border:1px solid transparent; border-radius:6px; }
+    .nav-item:hover,.nav-item.active { color:#fff; background:#12365f; border-color:#2c83b5; }
+    .nav-count { color:var(--cyan); font-size:11px; }
+    .sidebar-footer { padding:12px 10px 0; color:var(--muted); font-size:11px; border-top:1px solid #183c62; }
+    .main { display:flex; min-width:0; min-height:0; flex-direction:column; }
+    .toolbar { display:flex; min-height:64px; align-items:center; justify-content:space-between; gap:14px; padding:12px 22px; background:#081a35cc; border-bottom:1px solid var(--line); }
+    .toolbar h1 { margin:0; font-size:20px; }
+    .toolbar p { margin:3px 0 0; color:var(--muted); font-size:12px; }
+    .toolbar-actions { display:flex; gap:8px; }
+    .tool-button { padding:8px 12px; color:#dff8ff; background:#123c67; border:1px solid #2b7eae; border-radius:5px; }
+    .tool-button:hover { border-color:var(--cyan); }
+    .workspace { display:grid; min-height:0; flex:1; grid-template-columns:minmax(300px,390px) minmax(0,1fr); gap:14px; padding:14px; overflow:hidden; }
+    .query-panel,.result-panel { min-width:0; min-height:0; background:linear-gradient(145deg,#102d51dd,#091a34ee); border:1px solid #245985; border-radius:8px; box-shadow:0 10px 30px #0003; }
+    .query-panel { display:flex; flex-direction:column; overflow:auto; }
+    .panel-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:14px 16px; border-bottom:1px solid #1e496f; }
+    .panel-head h2 { margin:0; font-size:16px; }
+    .panel-head span { color:var(--muted); font-size:11px; }
+    .endpoint-tabs { display:flex; gap:6px; padding:10px 12px; overflow:auto; border-bottom:1px solid #183e64; }
+    .endpoint-tab { flex:0 0 auto; padding:6px 9px; color:#a7c7dc; background:#0a1e3a; border:1px solid #214d74; border-radius:5px; }
+    .endpoint-tab.active { color:#fff; background:#0e5684; border-color:var(--cyan); }
+    .form { padding:14px 16px; }
+    .field { display:flex; margin-bottom:11px; flex-direction:column; gap:5px; }
+    .field label { color:#c8e2f2; font-size:12px; }
+    .field label em { color:var(--orange); font-style:normal; }
+    .field input,.field select,.field textarea { width:100%; padding:8px 9px; color:var(--text); background:#071a34; border:1px solid #285679; border-radius:5px; outline:none; }
+    .field input:focus,.field select:focus,.field textarea:focus { border-color:var(--cyan); box-shadow:0 0 0 2px #36c9ff22; }
+    .field textarea { min-height:90px; resize:vertical; }
+    .hint { color:var(--muted); font-size:11px; }
+    .execute { width:100%; margin-top:6px; padding:10px; color:#03182b; font-weight:700; background:linear-gradient(90deg,#4dd5ff,#6de6b2); border:0; border-radius:5px; }
+    .execute:disabled { cursor:wait; opacity:.55; }
+    .result-panel { display:flex; flex-direction:column; overflow:hidden; }
+    .result-meta { display:flex; min-height:48px; align-items:center; gap:12px; padding:8px 16px; color:var(--muted); border-bottom:1px solid #1e496f; }
+    .status { color:var(--green); font-weight:700; }
+    .status.error { color:var(--red); }
+    .result-actions { display:flex; gap:6px; margin-left:auto; }
+    .result-actions button { padding:5px 8px; color:#cdefff; background:#12385e; border:1px solid #295b82; border-radius:4px; }
+    .result-body { min-height:0; flex:1; overflow:auto; }
+    .empty { display:grid; height:100%; min-height:250px; place-items:center; color:var(--muted); }
+    .view-tabs { display:flex; gap:4px; padding:10px 16px 0; }
+    .view-tab { padding:6px 11px; color:var(--muted); background:transparent; border:0; border-bottom:2px solid transparent; }
+    .view-tab.active { color:var(--cyan); border-color:var(--cyan); }
+    .json { margin:0; padding:16px; color:#c9edff; font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre-wrap; word-break:break-word; }
+    .table-wrap { padding:12px 16px 18px; overflow:auto; }
+    table { width:100%; border-collapse:collapse; font-size:12px; }
+    th,td { padding:8px 10px; text-align:left; vertical-align:top; border-bottom:1px solid #1a4166; }
+    th { position:sticky; top:0; color:#c5e8f7; background:#12375d; }
+    td { color:#b7d4e7; max-width:280px; word-break:break-word; }
+    .chart { width:100%; height:420px; padding:10px; }
+    .request-box { margin:0 16px 12px; padding:10px; color:#a9c9dc; font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; background:#06162c; border:1px solid #173d62; border-radius:5px; word-break:break-all; }
+    @media (max-width:900px) { body { overflow:auto; } .app { height:auto; min-height:100vh; grid-template-columns:1fr; } .sidebar { min-height:auto; } .nav { max-height:180px; } .workspace { grid-template-columns:1fr; overflow:visible; } .result-panel { min-height:500px; } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">WeatherDemo API<small>真实 Flask 接口工作台</small></div>
+    <input id="navSearch" class="nav-search" placeholder="搜索接口或模块" aria-label="搜索接口">
+    <nav id="nav" class="nav" aria-label="业务接口导航"></nav>
+    <div class="sidebar-footer">数据来自真实 API / MySQL<br><a href="/api/docs" target="_blank" style="color:var(--cyan)">打开 Swagger 原文档</a></div>
+  </aside>
+  <main class="main">
+    <header class="toolbar">
+      <div><h1 id="moduleTitle">系统概览</h1><p id="moduleDescription">加载 OpenAPI 接口定义中…</p></div>
+      <div class="toolbar-actions"><button class="tool-button" id="swaggerButton">Swagger 文档</button><button class="tool-button" id="copyButton">复制响应</button></div>
+    </header>
+    <section class="workspace">
+      <section class="query-panel">
+        <div class="panel-head"><h2>接口查询</h2><span id="endpointCount"></span></div>
+        <div id="endpointTabs" class="endpoint-tabs"></div>
+        <form id="queryForm" class="form"></form>
+      </section>
+      <section class="result-panel">
+        <div class="result-meta"><span id="status" class="status">等待查询</span><span id="duration"></span><div class="result-actions"><button id="requestToggle">请求信息</button><button id="clearButton">清空</button></div></div>
+        <pre id="requestBox" class="request-box" hidden></pre>
+        <div class="view-tabs"><button class="view-tab active" data-view="json">JSON</button><button class="view-tab" data-view="table">表格</button><button class="view-tab" data-view="chart">图表</button></div>
+        <div id="resultBody" class="result-body"><div class="empty">请选择接口并执行查询</div></div>
+      </section>
+    </section>
+  </main>
+</div>
+<script>
+(() => {
+  const state = { spec: null, groups: [], group: null, operation: null, response: null, requestUrl: '', view: 'json', chart: null };
+  const $ = (id) => document.getElementById(id);
+  const tagLabels = { System:'系统概览', Location:'地区接口', Weather:'天气数据', 'Temperature Analysis':'温度分析', 'Rainfall Analysis':'降水分析', 'Wind Analysis':'风力分析', 'Air Quality':'空气质量', Comparison:'区域对比', Dashboard:'Dashboard 接口' };
+  const tagDescriptions = { System:'服务健康与运行状态', Location:'省份、城市和区县真实选项', Weather:'历史天气记录和趋势', 'Temperature Analysis':'历史温度统计', 'Rainfall Analysis':'历史降水统计', 'Wind Analysis':'风速和风级统计', 'Air Quality':'AQI 固定快照', Comparison:'多城市历史天气对比', Dashboard:'首页聚合数据' };
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (x) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+  const dataOf = (payload) => payload && Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : payload;
+  const isNumber = (value) => value !== '' && value !== null && Number.isFinite(Number(value));
+
+  async function loadSpec() {
+    const response = await fetch('/openapi.json');
+    if (!response.ok) throw new Error('OpenAPI 文档加载失败');
+    state.spec = await response.json();
+    const grouped = new Map();
+    Object.entries(state.spec.paths || {}).forEach(([path, methods]) => Object.entries(methods).forEach(([method, operation]) => {
+      if (!['get','post','put','patch','delete'].includes(method)) return;
+      const tag = operation.tags?.[0] || 'Other';
+      if (!grouped.has(tag)) grouped.set(tag, []);
+      grouped.get(tag).push({ path, method, operation });
+    }));
+    state.groups = [...grouped.entries()].map(([tag, operations]) => ({ tag, operations }));
+    renderNav();
+    selectGroup(state.groups[0]);
+  }
+
+  function renderNav(filter = '') {
+    const term = filter.trim().toLowerCase();
+    $('nav').innerHTML = state.groups.filter((group) => !term || tagLabels[group.tag]?.toLowerCase().includes(term) || group.tag.toLowerCase().includes(term) || group.operations.some((x) => `${x.path} ${x.operation.summary || ''}`.toLowerCase().includes(term))).map((group) => `<div class="nav-group">${escapeHtml(tagLabels[group.tag] || group.tag)}</div><button class="nav-item ${state.group?.tag === group.tag ? 'active' : ''}" data-tag="${escapeHtml(group.tag)}"><span>${escapeHtml(tagLabels[group.tag] || group.tag)}</span><span class="nav-count">${group.operations.length}</span></button>`).join('');
+    $('nav').querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => selectGroup(state.groups.find((x) => x.tag === button.dataset.tag))));
+  }
+
+  function selectGroup(group) {
+    if (!group) return;
+    state.group = group;
+    $('moduleTitle').textContent = tagLabels[group.tag] || group.tag;
+    $('moduleDescription').textContent = tagDescriptions[group.tag] || state.spec.tags?.find((x) => x.name === group.tag)?.description || '';
+    $('endpointCount').textContent = `${group.operations.length} 个接口`;
+    $('endpointTabs').innerHTML = group.operations.map((x, index) => `<button type="button" class="endpoint-tab ${index === 0 ? 'active' : ''}" data-index="${index}">${escapeHtml(x.method.toUpperCase())} ${escapeHtml(x.operation.summary || x.path)}</button>`).join('');
+    $('endpointTabs').querySelectorAll('.endpoint-tab').forEach((button) => button.addEventListener('click', () => { $('endpointTabs').querySelectorAll('.endpoint-tab').forEach((x) => x.classList.remove('active')); button.classList.add('active'); selectOperation(group.operations[Number(button.dataset.index)]); }));
+    selectOperation(group.operations[0]);
+    renderNav();
+  }
+
+  function selectOperation(operation) {
+    state.operation = operation;
+    $('queryForm').innerHTML = `${(operation.operation.parameters || []).map(parameterField).join('')}${operation.operation.requestBody ? '<div class="field"><label>请求体 JSON</label><textarea name="__body" placeholder="请输入 JSON 请求体"></textarea></div>' : ''}<button class="execute" type="submit">执行查询</button>`;
+    $('queryForm').querySelectorAll('select[data-location]').forEach((select) => select.addEventListener('change', () => updateLocationFields(select.dataset.location)));
+    updateLocationFields();
+  }
+
+  function parameterField(parameter) {
+    const schema = parameter.schema || {};
+    const required = parameter.required ? '<em>*</em>' : '';
+    const name = parameter.name;
+    let control;
+    if (schema.enum) control = `<select name="${escapeHtml(name)}"><option value="">请选择</option>${schema.enum.map((x) => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('')}</select>`;
+    else if (name === 'province' || name === 'city' || name === 'district') control = `<select name="${escapeHtml(name)}" data-location="${name}"><option value="">${parameter.required ? '请选择' : '全部'}</option></select>`;
+    else if (schema.format === 'date') control = `<input name="${escapeHtml(name)}" type="date">`;
+    else control = `<input name="${escapeHtml(name)}" type="${schema.type === 'integer' || schema.type === 'number' ? 'number' : 'text'}"${schema.type === 'integer' ? ' step="1"' : ''} placeholder="${escapeHtml(parameter.description || '')}">`;
+    return `<div class="field"><label>${escapeHtml(parameter.description || name)} ${required}<span class="hint">(${escapeHtml(name)})</span></label>${control}</div>`;
+  }
+
+  async function updateLocationFields(changed) {
+    const form = $('queryForm'); const province = form.elements.province?.value || ''; const city = form.elements.city?.value || '';
+    const load = async (name, url, params) => { const select = form.elements[name]; if (!select) return; select.disabled = true; select.innerHTML = '<option value="">加载中…</option>'; try { const response = await fetch(`${url}?${new URLSearchParams(params)}`); const payload = await response.json(); select.innerHTML = `<option value="">全部</option>${(dataOf(payload) || []).map((x) => `<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('')}`; select.disabled = false; } catch { select.innerHTML = '<option value="">加载失败</option>'; } };
+    if (form.elements.province && (changed === 'province' || !form.elements.province.options.length)) await load('province', '/api/locations/provinces', {});
+    if (form.elements.city && province && (changed === 'province' || changed === undefined)) await load('city', '/api/locations/cities', { province });
+    if (form.elements.district && province && city && (changed === 'city' || changed === undefined)) await load('district', '/api/locations/districts', { province, city });
+    if (changed === 'province' && form.elements.district) form.elements.district.innerHTML = '<option value="">全部</option>';
+  }
+
+  async function execute(event) {
+    event.preventDefault(); const form = new FormData($('queryForm')); const query = new URLSearchParams(); let body;
+    for (const [key, value] of form.entries()) { if (!value) continue; if (key === '__body') body = value; else query.set(key, value); }
+    const url = `${state.operation.path}${query.toString() ? `?${query}` : ''}`; const started = performance.now(); $('status').textContent = '请求中…'; $('status').className = 'status'; $('duration').textContent = ''; $('requestBox').hidden = true;
+    try { const response = await fetch(url, { method: state.operation.method.toUpperCase(), headers: body ? {'Content-Type':'application/json'} : {}, body: body || undefined }); const payload = await response.json(); state.response = payload; state.requestUrl = `${location.origin}${url}`; const elapsed = Math.round(performance.now() - started); $('status').textContent = `${response.status} ${response.ok ? '成功' : '失败'}`; $('status').className = `status ${response.ok ? '' : 'error'}`; $('duration').textContent = `${elapsed} ms`; renderResult(); } catch (error) { $('status').textContent = '请求失败'; $('status').className = 'status error'; $('duration').textContent = error.message; state.response = { error: error.message }; renderResult(); }
+  }
+
+  function rowsFrom(data) { if (Array.isArray(data)) return data; if (data && typeof data === 'object') { const array = Object.values(data).find(Array.isArray); return array || [data]; } return []; }
+  function renderTable(data) { const rows = rowsFrom(data); if (!rows.length) return '<div class="empty">当前响应没有可展示的列表数据</div>'; const keys = [...new Set(rows.flatMap((row) => Object.keys(row || {})))]; return `<div class="table-wrap"><table><thead><tr>${keys.map((x) => `<th>${escapeHtml(x)}</th>`).join('')}</tr></thead><tbody>${rows.map((row) => `<tr>${keys.map((key) => `<td>${escapeHtml(typeof row?.[key] === 'object' ? JSON.stringify(row[key]) : row?.[key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`; }
+  function renderChart(data) { const rows = rowsFrom(data); if (!rows.length) return '<div class="empty">当前响应不适合图表展示</div>'; const keys = Object.keys(rows[0] || {}); const xKey = keys.find((x) => /date|month/i.test(x)) || keys[0]; const valueKeys = keys.filter((x) => x !== xKey && rows.some((r) => isNumber(r?.[x]))); if (!valueKeys.length) return '<div class="empty">当前响应没有数值序列</div>'; setTimeout(() => { const el = document.querySelector('.chart'); if (!el || !window.echarts) return; state.chart?.dispose(); state.chart = echarts.init(el); state.chart.setOption({ tooltip:{trigger:'axis'}, legend:{data:valueKeys}, xAxis:{type:'category',data:rows.map((r) => r?.[xKey])}, yAxis:{type:'value'}, series:valueKeys.map((key) => ({name:key,type:'line',smooth:true,data:rows.map((r) => Number(r?.[key]))})) }); }, 0); return '<div class="chart"></div>'; }
+  function renderResult() { const payload = state.response; const data = dataOf(payload); const body = $('resultBody'); body.innerHTML = `<pre class="json">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`; document.querySelectorAll('.view-tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.view === state.view)); if (state.view === 'table') body.innerHTML = renderTable(data); if (state.view === 'chart') body.innerHTML = renderChart(data); }
+
+  $('queryForm').addEventListener('submit', execute); $('navSearch').addEventListener('input', (e) => renderNav(e.target.value)); $('swaggerButton').addEventListener('click', () => window.open('/api/docs', '_blank')); $('clearButton').addEventListener('click', () => { state.response = null; $('status').textContent = '等待查询'; $('duration').textContent = ''; $('resultBody').innerHTML = '<div class="empty">请选择接口并执行查询</div>'; }); $('requestToggle').addEventListener('click', () => { $('requestBox').textContent = state.requestUrl || '尚未执行请求'; $('requestBox').hidden = !$('requestBox').hidden; }); $('copyButton').addEventListener('click', async () => { if (state.response) await navigator.clipboard?.writeText(JSON.stringify(state.response, null, 2)); }); document.querySelectorAll('.view-tab').forEach((tab) => tab.addEventListener('click', () => { state.view = tab.dataset.view; renderResult(); }));
+  loadSpec().catch((error) => { $('moduleDescription').textContent = error.message; $('status').textContent = 'OpenAPI 加载失败'; $('status').className = 'status error'; });
+})();
+</script>
+</body>
+</html>

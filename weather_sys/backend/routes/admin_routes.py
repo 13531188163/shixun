@@ -39,6 +39,12 @@ def admin_page():
 
 
 @admin_bp.get("/admin")
+def admin_workbench_page():
+    """Serve the compact API workbench for the real Flask API."""
+
+    return render_template("api_workbench.html")
+
+
 @admin_bp.get("/api/docs")
 def swagger_ui_page():
     """Serve the standard Swagger UI shell for the real Flask API."""
