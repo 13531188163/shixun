@@ -427,6 +427,41 @@ body {
   box-shadow: 0 0 14px rgb(0 183 239 / 23%);
 }
 
+/* The cockpit uses one map scene. Rails float over its edges instead of
+   dividing the scene into three independent report columns. */
+@media (min-width: 1101px) {
+  .dashboard-stage {
+    display: block;
+    position: relative;
+  }
+
+  .dashboard-map-stage {
+    position: absolute;
+    inset: 0;
+  }
+
+  .dashboard-rail {
+    position: absolute;
+    top: 9px;
+    bottom: 9px;
+    width: var(--dashboard-rail-width);
+  }
+
+  .dashboard-weather-rail { left: 0; }
+  .dashboard-air-rail { right: 0; }
+
+  .dashboard-stage.left-rail-collapsed .dashboard-weather-rail,
+  .dashboard-stage.right-rail-collapsed .dashboard-air-rail {
+    width: 48px;
+  }
+
+  .dashboard-stage.left-rail-collapsed .dashboard-map-stage,
+  .dashboard-stage.right-rail-collapsed .dashboard-map-stage,
+  .dashboard-stage.left-rail-collapsed.right-rail-collapsed .dashboard-map-stage {
+    inset: 0;
+  }
+}
+
 .dashboard-toolbar {
   display: flex;
   min-height: var(--toolbar-height);
