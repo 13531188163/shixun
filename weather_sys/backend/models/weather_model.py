@@ -416,7 +416,7 @@ def get_national_weather_overview(date: str | None = None) -> dict[str, Any] | N
         with connection.cursor() as cursor:
             if date is None:
                 cursor.execute(
-                    "SELECT DATE_FORMAT(MAX(STR_TO_DATE(date, '%%Y-%%m-%%d')), '%%Y-%%m-%%d') AS selected_date "
+                    "SELECT MAX(date) AS selected_date "
                     f"FROM weather_data WHERE {valid_date}"
                 )
                 selected_date = (cursor.fetchone() or {}).get("selected_date")
@@ -433,24 +433,43 @@ def get_national_weather_trend(
     """Return the latest national hierarchy-aware daily weather values."""
 
     _validate_history_limit(days)
+    # date is stored in the canonical YYYY-MM-DD format (see DATA_DICTIONARY).
+    # Keep the comparison as a plain string predicate so idx_weather_data_date
+    # can be used.  The derived date list limits the hierarchy aggregation to
+    # the requested observation window instead of aggregating the whole table.
+    valid_date = (
+        "date IS NOT NULL AND TRIM(date) <> '' "
+        "AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+    )
+    params: list[Any]
+    if end_date is None:
+        selected_dates = (
+            "SELECT DISTINCT date AS selected_date FROM weather_data "
+            f"WHERE {valid_date} ORDER BY date DESC LIMIT %s"
+        )
+        params = [days]
+    else:
+        selected_dates = (
+            "SELECT DISTINCT date AS selected_date FROM weather_data "
+            f"WHERE {valid_date} AND date <= %s "
+            "ORDER BY date DESC LIMIT %s"
+        )
+        params = [end_date, days]
     clauses = [
-        "date IS NOT NULL",
-        "TRIM(date) <> ''",
-        "date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'",
+        valid_date,
+        "date IN ("
+        "SELECT selected_date FROM ("
+        f"{selected_dates}"
+        ") AS selected_weather_dates)",
     ]
-    params: list[Any] = []
-    if end_date is not None:
-        clauses.append("STR_TO_DATE(date, '%%Y-%%m-%%d') <= STR_TO_DATE(%s, '%%Y-%%m-%%d')")
-        params.append(end_date)
     daily_sql = _national_weather_daily_sql(" AND ".join(clauses))
     sql = (
         "SELECT date, source_records AS record_count, max_temp, min_temp, "
         "avg_wind, max_wind, total_precip, "
         "'全国多种天气' AS weather "
         f"FROM ({daily_sql}) AS national_daily "
-        "ORDER BY STR_TO_DATE(date, '%%Y-%%m-%%d') DESC LIMIT %s"
+        "ORDER BY date DESC"
     )
-    params.append(days)
     with connection_scope() as connection:
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
@@ -465,7 +484,7 @@ def get_national_weather_dates(limit: int = _MAX_DATE_LIMIT) -> list[dict[str, A
         "SELECT DISTINCT date FROM weather_data "
         "WHERE date IS NOT NULL AND TRIM(date) <> '' "
         "AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' "
-        "ORDER BY STR_TO_DATE(date, '%%Y-%%m-%%d') DESC LIMIT %s"
+        "ORDER BY date DESC LIMIT %s"
     )
     with connection_scope() as connection:
         with connection.cursor() as cursor:

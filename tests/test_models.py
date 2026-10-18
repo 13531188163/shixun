@@ -79,6 +79,49 @@ class ModelValidationTests(unittest.TestCase):
         self.assertNotIn("ROW_NUMBER", cursor.sql.upper())
         self.assertIn("NOT EXISTS", cursor.sql.upper())
 
+    def test_national_trend_limits_dates_before_hierarchy_aggregation(self):
+        class Cursor:
+            def __init__(self):
+                self.sql = ""
+                self.params = []
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def execute(self, sql, params):
+                self.sql = sql
+                self.params = params
+
+            def fetchall(self):
+                return []
+
+        cursor = Cursor()
+
+        class Connection:
+            def cursor(self):
+                return cursor
+
+            def close(self):
+                return None
+
+        @contextmanager
+        def connection_scope_stub():
+            yield Connection()
+
+        with patch.object(weather_model, "connection_scope", connection_scope_stub):
+            self.assertEqual(
+                weather_model.get_national_weather_trend(end_date="2026-05-22", days=7),
+                [],
+            )
+        self.assertIn("SELECT DISTINCT date AS selected_date", cursor.sql)
+        self.assertIn("date <= %s", cursor.sql)
+        self.assertIn("ORDER BY date DESC", cursor.sql)
+        self.assertNotIn("STR_TO_DATE(date", cursor.sql)
+        self.assertEqual(cursor.params, ["2026-05-22", 7])
+
 
 @unittest.skipUnless(RUN_DB_TESTS, "set RUN_DB_TESTS=1 for MySQL read-only integration checks")
 class ModelDatabaseReadOnlyTests(unittest.TestCase):

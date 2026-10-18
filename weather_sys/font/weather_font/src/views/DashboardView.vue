@@ -66,6 +66,7 @@ const errors = reactive({
 
 let requestVersion = 0
 let comparisonPoolPromise
+const citiesByProvince = new Map()
 const airQualityPromises = new Map()
 
 const DIRECT_MUNICIPALITIES = new Set(['北京', '北京市', '上海', '上海市', '天津', '天津市', '重庆', '重庆市'])
@@ -158,6 +159,7 @@ function resetDataSelection() {
   districts.value = []
   availableDates.value = []
   comparisonPoolPromise = undefined
+  citiesByProvince.clear()
   airQualityPromises.clear()
   clearData()
   pageError.value = ''
@@ -169,13 +171,25 @@ async function comparisonCitiesFor(selectedCity) {
   if (!comparisonPoolPromise) {
     const sampleProvinces = provinces.value.slice(0, 8).filter((province) => province !== dataRegion.province)
     comparisonPoolPromise = Promise.allSettled(
-      sampleProvinces.map((province) => getCities({ province })),
+      sampleProvinces.map((province) => citiesForProvince(province)),
     ).then((results) => results.flatMap((result) => (
       result.status === 'fulfilled' && Array.isArray(result.value.data) ? result.value.data : []
     )))
   }
   const pool = await comparisonPoolPromise
   return [...new Set([selectedCity, ...pool].filter(Boolean))].slice(0, 10)
+}
+
+function citiesForProvince(province) {
+  if (!province) return Promise.resolve({ data: [] })
+  if (!citiesByProvince.has(province)) {
+    const request = getCities({ province })
+    citiesByProvince.set(province, request)
+    request.catch(() => {
+      if (citiesByProvince.get(province) === request) citiesByProvince.delete(province)
+    })
+  }
+  return citiesByProvince.get(province)
 }
 
 function airQualityParams() {
@@ -351,7 +365,6 @@ async function selectRegion({ province = '', city = '', district = '', syncMap =
   cities.value = []
   districts.value = []
   availableDates.value = []
-  comparisonPoolPromise = undefined
   clearData()
   pageError.value = ''
   locationLoading.value = true
@@ -360,7 +373,7 @@ async function selectRegion({ province = '', city = '', district = '', syncMap =
   try {
     if (nextProvince) {
       try {
-        const cityResponse = await getCities({ province: nextProvince })
+        const cityResponse = await citiesForProvince(nextProvince)
         if (version !== requestVersion) return
         cities.value = Array.isArray(cityResponse.data) ? cityResponse.data : []
       } catch (error) {
