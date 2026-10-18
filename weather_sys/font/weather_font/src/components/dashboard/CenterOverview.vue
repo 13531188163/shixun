@@ -31,8 +31,8 @@ const aqiLabel = computed(() => {
       <div class="area-heading">
         <div>
           <span class="area-kicker">FIXED DATA DATE</span>
-          <h3>{{ location?.province || (location?.scope === 'country' ? '全国' : '--') }} · {{ location?.city || (location?.scope === 'country' ? '全国汇总' : '省级汇总') }}</h3>
-          <p>{{ location?.district || (location?.scope === 'country' ? '请选择上方省份筛选' : location?.scope === 'province' ? '全省聚合' : '稳定代表区县') }} · {{ weather?.date || '固定日期数据' }}</p>
+          <h3>{{ location?.district || location?.city || location?.province || (location?.scope === 'country' ? '全国' : '--') }}<span v-if="location?.district || location?.city || location?.province"> · {{ location?.district ? '区县详情' : location?.city ? '城市汇总' : location?.scope === 'province' ? '省级汇总' : '全国汇总' }}</span><span v-else> · 全国汇总</span></h3>
+          <p>{{ location?.district ? `${location.province} / ${location.city} / ${location.district}` : location?.city ? `${location.province} / ${location.city}` : location?.province ? `${location.province} / 省级汇总` : '请选择上方省份筛选' }} · {{ weather?.date || '固定日期数据' }}</p>
         </div>
         <div class="center-aqi">
           <span>AQI</span>

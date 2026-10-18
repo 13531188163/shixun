@@ -15,7 +15,7 @@ import {
   mapSourceUrl,
 } from '../../utils/administrativeMap'
 import { mapRegion, setMapRegion } from '../../stores/regionStore'
-import { fitGeoBounds, geoJsonBounds } from '../../utils/mapGeometry'
+import { expandGeoBounds, fitGeoBounds, geoJsonBounds } from '../../utils/mapGeometry'
 import { comparableRegionName } from '../../utils/dashboardRegion'
 
 const props = defineProps({
@@ -51,14 +51,34 @@ const registeredMapNames = new Set()
 const currentNode = computed(() => navigation.value[navigation.value.length - 1])
 const currentFeatures = computed(() => currentMap.value?.geoJson?.features || [])
 const currentMapName = computed(() => currentMap.value?.mapName || '')
-const currentLevel = computed(() => currentNode.value?.level || 'country')
-const mapFit = computed(() => fitGeoBounds(geoJsonBounds(currentMap.value?.geoJson), mapViewport.value))
+const currentLevel = computed(() => mapRegion.district ? 'district' : (currentNode.value?.level || 'country'))
+const selectedFeature = computed(() => mapRegion.district ? businessFeature() : null)
+const mapFit = computed(() => {
+  const wholeMapFit = fitGeoBounds(geoJsonBounds(currentMap.value?.geoJson), mapViewport.value)
+  if (!selectedFeature.value) return wholeMapFit
+  const districtBounds = geoJsonBounds({ type: 'FeatureCollection', features: [selectedFeature.value] })
+  const focusFit = fitGeoBounds(districtBounds, mapViewport.value, 0.78)
+  const padded = expandGeoBounds(districtBounds, 0.35)
+  return {
+    ...focusFit,
+    boundingCoords: padded ? [[padded.minX, padded.maxY], [padded.maxX, padded.minY]] : wholeMapFit.boundingCoords,
+  }
+})
 const currentLevelLabel = computed(() => ({
   country: '全国省级边界',
   province: '省级地市边界',
   city: '地级区县边界',
   district: '区县详情',
 }[currentLevel.value] || '行政区边界'))
+const displayNode = computed(() => {
+  if (!mapRegion.district) return currentNode.value
+  return {
+    ...currentNode.value,
+    name: mapRegion.district,
+    level: 'district',
+    adcode: effectiveSelectedAdcode.value || currentNode.value?.adcode,
+  }
+})
 
 function compactName(value) {
   return String(value || '').replace(/特别行政区|自治区|自治州|地区|盟|省|市$/u, '')
@@ -265,7 +285,7 @@ function mapData() {
 }
 
 function buildGraphic() {
-  const node = currentNode.value
+  const node = displayNode.value
   const recordLabel = props.weather?.recordCount
     ? '天气记录 ' + props.weather.recordCount
     : props.weather?.date
@@ -321,7 +341,10 @@ function buildOption() {
         const node = feature ? nodeFromFeature(feature) : null
         if (!node) return '<strong>' + (params?.name || '--') + '</strong>'
         const hint = isTerminalFeature(feature) ? '已到末级，点击查看数据' : '点击进入下一级边界'
-        return '<strong>' + node.name + '</strong><br/><span style="color:#8edcf4">' + hint + '</span><br/><span style="color:#8caec2">行政区编码：' + node.adcode + '</span>'
+        const weatherHint = mapRegion.district && comparableName(node.name) === comparableName(mapRegion.district) && props.weather
+          ? '<br/><span style="color:#ffe0a3">最高温：' + (props.weather.maxTemp ?? '暂无数据') + '°C · 最低温：' + (props.weather.minTemp ?? '暂无数据') + '°C</span>'
+          : ''
+        return '<strong>' + node.name + '</strong>' + weatherHint + '<br/><span style="color:#8edcf4">' + hint + '</span><br/><span style="color:#8caec2">行政区编码：' + node.adcode + '</span>'
       },
     },
     geo: [

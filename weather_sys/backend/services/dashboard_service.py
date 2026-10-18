@@ -67,7 +67,11 @@ def get_dashboard_overview(
         province=str(resolved_province) if resolved_province else None,
     )
 
-    weather_stats = weather_model.get_weather_statistics()
+    weather_stats = weather_model.get_weather_statistics(
+        province=resolved_province,
+        city=resolved_city,
+        district=district,
+    )
     air_quality_stats = air_quality_model.get_air_quality_statistics()
     return {
         "location": {
@@ -97,7 +101,7 @@ def get_province_dashboard_overview(
     if latest_weather is None:
         return None
 
-    weather_stats = weather_model.get_weather_statistics()
+    weather_stats = weather_model.get_weather_statistics(province=province)
     air_quality_stats = air_quality_model.get_air_quality_statistics()
     return {
         "location": {

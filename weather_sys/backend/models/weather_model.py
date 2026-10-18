@@ -636,7 +636,12 @@ def get_distinct_districts(
             return list(cursor.fetchall())
 
 
-def get_weather_statistics() -> dict[str, Any]:
+def get_weather_statistics(
+    *,
+    province: str | None = None,
+    city: str | None = None,
+    district: str | None = None,
+) -> dict[str, Any]:
     """Return aggregate facts needed by the dashboard overview.
 
     The count and latest-date aggregation run in MySQL and return one row;
@@ -644,14 +649,23 @@ def get_weather_statistics() -> dict[str, Any]:
     explicitly because it is stored as a string in the source schema.
     """
 
+    clauses, params = _location_filters(
+        province=province,
+        city=city,
+        district=district,
+    )
+    clauses.extend([
+        "date IS NOT NULL",
+        "TRIM(date) <> ''",
+        "date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'",
+    ])
     sql = (
-        "SELECT COUNT(*) AS record_count, "
-        "MAX(STR_TO_DATE(NULLIF(TRIM(date), ''), '%Y-%m-%d')) AS latest_date "
-        "FROM weather_data"
+        "SELECT COUNT(*) AS record_count, MAX(date) AS latest_date "
+        "FROM weather_data WHERE " + " AND ".join(clauses)
     )
     with connection_scope() as connection:
         with connection.cursor() as cursor:
-            cursor.execute(sql)
+            cursor.execute(sql, params)
             return cursor.fetchone() or {"record_count": 0, "latest_date": None}
 
 

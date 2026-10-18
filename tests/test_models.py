@@ -122,6 +122,52 @@ class ModelValidationTests(unittest.TestCase):
         self.assertNotIn("STR_TO_DATE(date", cursor.sql)
         self.assertEqual(cursor.params, ["2026-05-22", 7])
 
+    def test_weather_statistics_applies_selected_location(self):
+        class Cursor:
+            def __init__(self):
+                self.sql = ""
+                self.params = []
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def execute(self, sql, params):
+                self.sql = sql
+                self.params = params
+
+            def fetchone(self):
+                return {"record_count": 2, "latest_date": "2026-05-22"}
+
+        cursor = Cursor()
+
+        class Connection:
+            def cursor(self):
+                return cursor
+
+            def close(self):
+                return None
+
+        @contextmanager
+        def connection_scope_stub():
+            yield Connection()
+
+        with patch.object(weather_model, "connection_scope", connection_scope_stub):
+            result = weather_model.get_weather_statistics(
+                province="新疆维吾尔自治区",
+                city="巴音郭楞蒙古自治州",
+                district="若羌县",
+            )
+        self.assertEqual(result["record_count"], 2)
+        self.assertIn("province IN", cursor.sql)
+        self.assertIn("city IN", cursor.sql)
+        self.assertIn("district = %s", cursor.sql)
+        self.assertEqual(cursor.params[-1], "若羌县")
+        self.assertIn("新疆维吾尔自治区", cursor.params)
+        self.assertIn("巴音郭楞蒙古自治州", cursor.params)
+
 
 @unittest.skipUnless(RUN_DB_TESTS, "set RUN_DB_TESTS=1 for MySQL read-only integration checks")
 class ModelDatabaseReadOnlyTests(unittest.TestCase):
