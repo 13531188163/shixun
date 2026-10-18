@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:map": "node --test tests/administrativeMap.test.js tests/regionThumbnail.test.js",
+    "test:map": "node --test tests/administrativeMap.test.js tests/regionThumbnail.test.js tests/mapGeometry.test.js",
     "test:comparison": "node --test tests/comparisonRadar.test.js"
   },
   "dependencies": {
