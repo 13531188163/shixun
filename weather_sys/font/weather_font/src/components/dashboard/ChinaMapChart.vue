@@ -23,6 +23,7 @@ const props = defineProps({
   weather: { type: Object, default: null },
   airQuality: { type: Object, default: null },
   regionMetrics: { type: Object, default: () => ({}) },
+  availableRegions: { type: Array, default: () => [] },
   // 保留旧 prop，地图层级现在由自身导航栈管理。
   detailProvince: { type: String, default: '' },
   loading: Boolean,
@@ -86,6 +87,11 @@ function compactName(value) {
 
 function comparableName(value) {
   return comparableRegionName(value)
+}
+
+function isFeatureAvailable(feature) {
+  const name = comparableName(featureName(feature))
+  return Boolean(name && props.availableRegions.some((item) => comparableName(item) === name))
 }
 
 function nodeFromFeature(feature) {
@@ -200,6 +206,10 @@ function featureSelection(feature) {
 }
 
 function selectFeature(feature) {
+  if (!isFeatureAvailable(feature)) {
+    terminalMessage.value = `${featureName(feature) || '该行政区'}没有天气数据，无法进入`
+    return null
+  }
   const selection = featureSelection(feature)
   if (!selection) return null
   selectedAdcode.value = selection.node.adcode
@@ -274,8 +284,8 @@ function mapData() {
       adcode,
       value: selectedArea ? 1 : 0,
       itemStyle: {
-        areaColor: selectedArea ? 'rgba(243, 171, 78, 0.82)' : hoveredArea ? 'rgba(35, 177, 227, 0.68)' : 'rgba(8, 67, 105, 0.48)',
-        borderColor: selectedArea ? '#ffe0a3' : '#48c9f2',
+        areaColor: selectedArea ? 'rgba(243, 171, 78, 0.82)' : !isFeatureAvailable(feature) ? 'rgba(30, 54, 76, 0.32)' : hoveredArea ? 'rgba(35, 177, 227, 0.68)' : 'rgba(8, 67, 105, 0.48)',
+        borderColor: selectedArea ? '#ffe0a3' : !isFeatureAvailable(feature) ? 'rgba(98, 133, 155, 0.46)' : '#48c9f2',
         borderWidth: selectedArea ? 2.2 : 0.9,
         shadowColor: selectedArea ? '#ffb64f' : hoveredArea ? '#24d9ff' : 'transparent',
         shadowBlur: selectedArea ? 28 : hoveredArea ? 18 : 0,
@@ -344,7 +354,8 @@ function buildOption() {
         const weatherHint = mapRegion.district && comparableName(node.name) === comparableName(mapRegion.district) && props.weather
           ? '<br/><span style="color:#ffe0a3">最高温：' + (props.weather.maxTemp ?? '暂无数据') + '°C · 最低温：' + (props.weather.minTemp ?? '暂无数据') + '°C</span>'
           : ''
-        return '<strong>' + node.name + '</strong>' + weatherHint + '<br/><span style="color:#8edcf4">' + hint + '</span><br/><span style="color:#8caec2">行政区编码：' + node.adcode + '</span>'
+        const availabilityHint = isFeatureAvailable(feature) ? hint : '数据库无天气记录，无法进入'
+        return '<strong>' + node.name + '</strong>' + weatherHint + '<br/><span style="color:#8edcf4">' + availabilityHint + '</span><br/><span style="color:#8caec2">行政区编码：' + node.adcode + '</span>'
       },
     },
     geo: [
@@ -551,6 +562,7 @@ useEChart(chartElement, buildOption, [
       :weather="weather"
       :air-quality="airQuality"
       :region-metrics="regionMetrics"
+      :available-regions="availableRegions"
       @enter="handleCarouselEnter"
     />
     <p class="map-source">边界数据：DataV GeoAtlas · adcode · 按需加载并缓存；天气与空气质量仍来自后端数据库</p>

@@ -11,6 +11,7 @@ const props = defineProps({
   airQualitySummary: { type: Object, default: null },
   statistics: { type: Object, default: null },
   regionMetrics: { type: Object, default: () => ({}) },
+  availableRegions: { type: Array, default: () => [] },
   loading: Boolean,
   error: { type: String, default: '' },
 })
@@ -47,6 +48,7 @@ const aqiLabel = computed(() => {
           :weather="weather"
           :air-quality="airQuality"
           :region-metrics="regionMetrics"
+          :available-regions="availableRegions"
           :loading="loading"
           :error="error"
           @area-select="emit('area-select', $event)"

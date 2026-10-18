@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import RegionThumbnail from './RegionThumbnail.vue'
 import { featureAdcode, featureName, isTerminalFeature } from '../../utils/administrativeMap'
 import { formatNumber, formatTemperature } from '../../utils/formatters'
+import { comparableRegionName } from '../../utils/dashboardRegion'
 
 const props = defineProps({
   features: { type: Array, default: () => [] },
@@ -14,6 +15,7 @@ const props = defineProps({
   airQuality: { type: Object, default: null },
   // 只接收后端真实返回的区域指标；缺失时明确显示暂无数据。
   regionMetrics: { type: Object, default: () => ({}) },
+  availableRegions: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['select', 'enter'])
@@ -32,7 +34,10 @@ let suppressClick = false
 const normalizedSelected = computed(() => String(props.selectedAdcode || ''))
 // 即使某个真实要素缺少几何，也保留卡片并显示“轮廓不可用”，避免把
 // 数据源缺失悄悄伪装成“没有这个行政区”。
-const cards = computed(() => props.features.filter((feature) => featureName(feature)))
+const cards = computed(() => props.features.filter((feature) => {
+  const name = String(featureName(feature) || '').trim()
+  return name && props.availableRegions.some((item) => comparableRegionName(item) === comparableRegionName(name))
+}))
 const hasOverflow = computed(() => canScrollLeft.value || canScrollRight.value)
 
 function cardCode(feature, index) {

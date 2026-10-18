@@ -80,6 +80,11 @@ function provinceLabel(province) {
 const loading = computed(() => locationLoading.value || payloadLoading.value)
 const basicStatistics = computed(() => dashboard.value?.basicStatistics || null)
 const cityComparisonDisplay = computed(() => cityComparison.value.slice(0, 6))
+const availableMapRegions = computed(() => {
+  if (dataRegion.city) return districts.value
+  if (dataRegion.province) return cities.value
+  return provinces.value
+})
 const locationReady = computed(() => Boolean(dataRegion.province))
 const isProvinceScope = computed(() => dataRegion.scope === 'province' && Boolean(dataRegion.province))
 const dataDate = computed(() => currentDate.value || latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
@@ -338,6 +343,17 @@ async function selectRegion({ province = '', city = '', district = '', syncMap =
   const nextProvince = resolveProvince(province)
   const nextCity = resolveCity(city, nextProvince === dataRegion.province ? cities.value : [])
   const nextDistrict = resolveDistrict(district)
+  if ((province && !nextProvince) || (city && !nextCity) || (district && !nextDistrict)) {
+    pageError.value = '当前行政区没有天气数据，无法筛选或进入地图'
+    setMapRegion({
+      province: dataRegion.province,
+      city: dataRegion.city,
+      district: dataRegion.district,
+      scope: dataRegion.scope,
+      path: [],
+    })
+    return
+  }
   const nextScope = regionScope(nextProvince, nextCity, nextDistrict)
   const sameRegion = dataRegion.province === nextProvince
     && dataRegion.city === nextCity
@@ -381,8 +397,6 @@ async function selectRegion({ province = '', city = '', district = '', syncMap =
         cities.value = []
         if (!isNotFound(error)) pageError.value = errorText(error, '城市列表读取失败')
       }
-      if (nextCity && !cities.value.includes(nextCity)) cities.value = [...cities.value, nextCity]
-
       if (nextCity) {
         try {
           const districtResponse = await getDistricts({ province: nextProvince, city: nextCity })
@@ -392,9 +406,6 @@ async function selectRegion({ province = '', city = '', district = '', syncMap =
           if (version !== requestVersion) return
           districts.value = []
           if (!isNotFound(error)) pageError.value = errorText(error, '区县列表读取失败')
-        }
-        if (nextDistrict && !districts.value.includes(nextDistrict)) {
-          districts.value = [...districts.value, nextDistrict]
         }
       }
     }
@@ -581,6 +592,7 @@ onMounted(loadInitial)
             :statistics="basicStatistics"
             :loading="loading"
             :error="errors.overview"
+            :available-regions="availableMapRegions"
             @area-select="handleMapAreaSelect"
             @map-reset="handleMapReset"
           />
