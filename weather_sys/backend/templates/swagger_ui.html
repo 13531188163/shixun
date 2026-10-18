@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WeatherDemo API 文档</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    html { box-sizing: border-box; background: #fafafa; }
+    *, *::before, *::after { box-sizing: inherit; }
+    body { margin: 0; }
+    .swagger-ui .topbar { background: #17324f; }
+    .swagger-ui .topbar-wrapper img { display: none; }
+    .swagger-ui .topbar-wrapper::before { color: #fff; content: 'WeatherDemo Flask API'; font-size: 18px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function () {
+      window.ui = SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        displayOperationId: false,
+        defaultModelsExpandDepth: 1,
+        defaultModelExpandDepth: 2,
+        docExpansion: 'list',
+        filter: true,
+        displayRequestDuration: true,
+        tryItOutEnabled: true,
+        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+        layout: 'StandaloneLayout',
+      });
+    };
+  </script>
+</body>
+</html>
