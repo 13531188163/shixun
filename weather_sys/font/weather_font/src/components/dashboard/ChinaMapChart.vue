@@ -586,10 +586,11 @@ useEChart(chartElement, buildOption, [
 .map-shell.is-expanded .map-canvas { min-height: 0; }
 .map-shell.is-expanded :deep(.region-carousel) { max-height: 148px; overflow: auto; }
 .map-shell.is-expanded .map-source { display: none; }
+.map-shell.is-expanded .map-expand-button { position: fixed; z-index: 1100; top: 24px; right: 24px; padding: 7px 14px; color: #fff1c8; background: linear-gradient(180deg, rgb(133 84 27 / 96%), rgb(81 47 17 / 96%)); border-color: #ffc76b; box-shadow: 0 0 18px rgb(255 176 61 / 38%); }
 .map-shell :deep(.region-carousel) { padding: 5px 8px 6px; }
 .map-shell :deep(.carousel-heading) { margin-bottom: 4px; }
 .map-shell :deep(.region-card) { gap: 3px; padding: 4px; }
-.map-shell :deep(.region-thumbnail) { height: 42px !important; }
+.map-shell.is-expanded :deep(.region-thumbnail) { height: 78px !important; }
 .map-shell :deep(.region-card-data) { gap: 1px 3px; font-size: 7px; }
 .map-shell :deep(.region-card-data b) { font-size: 9px; }
 .map-shell :deep(.region-card-data em) { font-size: 7px; }

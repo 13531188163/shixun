@@ -29,7 +29,7 @@ const thumbnail = computed(() => buildRegionThumbnail(props.feature, {
 .region-thumbnail {
   display: grid;
   width: 100%;
-  height: 66px;
+  height: 78px;
   place-items: center;
   overflow: hidden;
   background: radial-gradient(circle at 50% 44%, rgb(24 128 181 / 24%), transparent 67%), rgb(3 34 66 / 78%);

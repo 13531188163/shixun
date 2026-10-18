@@ -241,9 +241,9 @@ onBeforeUnmount(() => {
           @click="handleSelect(feature, $event)"
           @keydown.enter="handleEnter(feature, $event)"
         >
-          <RegionThumbnail :feature="feature" :selected="cardCode(feature, index) === normalizedSelected" :height="54" />
+          <RegionThumbnail :feature="feature" :selected="cardCode(feature, index) === normalizedSelected" :height="78" />
           <div class="region-card-meta">
-            <strong>{{ featureName(feature) }}</strong>
+            <strong :title="featureName(feature)">{{ featureName(feature) }}</strong>
             <small>{{ featureAdcode(feature) || '编码不可用' }}</small>
           </div>
           <div class="region-card-data" aria-label="区域真实数据">
@@ -343,7 +343,7 @@ onBeforeUnmount(() => {
 .carousel-arrow {
   align-self: center;
   width: 22px;
-  height: 54px;
+  height: 78px;
   flex: 0 0 22px;
   color: #9feaff;
   font-size: 26px;
