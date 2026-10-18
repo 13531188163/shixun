@@ -82,12 +82,22 @@ const cityComparisonDisplay = computed(() => cityComparison.value.slice(0, 6))
 const locationReady = computed(() => Boolean(dataRegion.province))
 const isProvinceScope = computed(() => dataRegion.scope === 'province' && Boolean(dataRegion.province))
 const dataDate = computed(() => currentDate.value || latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
+const leftRailOpen = ref(true)
+const rightRailOpen = ref(true)
 const apiStatus = computed(() => {
   if (pageError.value) return '需要检查 API'
   if (healthError.value) return '健康检查失败'
   if (health.value?.application === 'ok' && health.value?.database === 'ok') return 'API / DB 已连接'
   return '正在检查服务'
 })
+
+function toggleLeftRail() {
+  leftRailOpen.value = !leftRailOpen.value
+}
+
+function toggleRightRail() {
+  rightRailOpen.value = !rightRailOpen.value
+}
 
 function statusOf(error) {
   return error?.response?.status || error?.apiResponse?.code || 0
@@ -510,61 +520,92 @@ onMounted(loadInitial)
     <div class="dashboard-content">
       <p v-if="pageError" class="dashboard-alert" role="alert">{{ pageError }}</p>
 
-      <div class="dashboard-grid dashboard-screen-grid">
-        <section class="dashboard-column left-column dashboard-side-column dashboard-side-left" aria-label="天气数据">
-          <DashboardPanel class="dashboard-focus-panel dashboard-weather-focus" title="核心天气指标" subtitle="所选区域 · 固定日期真实观测">
-            <div class="weather-focus-content">
-              <WeatherOverview :weather="latestWeather" :loading="loading" :error="errors.weather" />
-              <WeatherMetrics
-                :weather="latestWeather"
+      <div :class="['dashboard-stage', { 'left-rail-collapsed': !leftRailOpen, 'right-rail-collapsed': !rightRailOpen }]">
+        <aside :class="['dashboard-rail dashboard-weather-rail', { 'is-collapsed': !leftRailOpen }]" aria-label="天气数据侧栏">
+          <button
+            type="button"
+            class="dashboard-rail-toggle"
+            :aria-expanded="leftRailOpen"
+            aria-controls="dashboard-weather-rail-content"
+            :aria-label="leftRailOpen ? '收起天气数据侧栏' : '展开天气数据侧栏'"
+            @click="toggleLeftRail"
+          >
+            <span aria-hidden="true">{{ leftRailOpen ? '‹' : '›' }}</span>
+          </button>
+          <div id="dashboard-weather-rail-content" class="dashboard-rail-content">
+            <div class="dashboard-rail-heading">
+              <span class="dashboard-rail-kicker">WEATHER DATA</span>
+              <strong>天气数据</strong>
+            </div>
+            <DashboardPanel class="dashboard-focus-panel dashboard-weather-focus" title="核心天气指标" subtitle="所选区域 · 固定日期">
+              <div class="weather-focus-content">
+                <WeatherOverview :weather="latestWeather" :loading="loading" :error="errors.weather" />
+                <WeatherMetrics
+                  :weather="latestWeather"
+                  :air-quality="latestAirQuality"
+                  :air-quality-summary="dashboard?.airQualitySummary"
+                  :loading="loading"
+                  :error="errors.weather"
+                />
+              </div>
+            </DashboardPanel>
+            <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="近7日天气趋势" subtitle="历史观测">
+              <WeatherTrendChart :data="weatherTrend" :loading="loading" :error="errors.trend" />
+            </DashboardPanel>
+            <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="重点城市天气对比" subtitle="实际返回城市">
+              <CityComparisonChart :data="cityComparisonDisplay" :loading="loading" :error="errors.comparison" />
+            </DashboardPanel>
+          </div>
+        </aside>
+
+        <section class="dashboard-map-stage" aria-label="全国天气与空气质量地图主舞台">
+          <div class="dashboard-map-glow" aria-hidden="true" />
+          <CenterOverview
+            :location="dataRegion"
+            :weather="latestWeather"
+            :air-quality="latestAirQuality"
+            :air-quality-summary="dashboard?.airQualitySummary"
+            :statistics="basicStatistics"
+            :loading="loading"
+            :error="errors.overview"
+            @area-select="handleMapAreaSelect"
+            @map-reset="handleMapReset"
+          />
+        </section>
+
+        <aside :class="['dashboard-rail dashboard-air-rail', { 'is-collapsed': !rightRailOpen }]" aria-label="空气质量数据侧栏">
+          <button
+            type="button"
+            class="dashboard-rail-toggle"
+            :aria-expanded="rightRailOpen"
+            aria-controls="dashboard-air-rail-content"
+            :aria-label="rightRailOpen ? '收起空气质量侧栏' : '展开空气质量侧栏'"
+            @click="toggleRightRail"
+          >
+            <span aria-hidden="true">{{ rightRailOpen ? '›' : '‹' }}</span>
+          </button>
+          <div id="dashboard-air-rail-content" class="dashboard-rail-content">
+            <div class="dashboard-rail-heading">
+              <span class="dashboard-rail-kicker">AIR QUALITY</span>
+              <strong>空气质量数据</strong>
+            </div>
+            <DashboardPanel class="dashboard-focus-panel" title="空气质量概况" subtitle="固定 AQI 快照">
+              <AirQualityOverview
                 :air-quality="latestAirQuality"
                 :air-quality-summary="dashboard?.airQualitySummary"
+                :location="dataRegion"
                 :loading="loading"
-                :error="errors.weather"
+                :error="errors.airQuality"
               />
-            </div>
-          </DashboardPanel>
-          <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="近7日天气趋势" subtitle="历史观测 · 不代表天气预报">
-            <WeatherTrendChart :data="weatherTrend" :loading="loading" :error="errors.trend" />
-          </DashboardPanel>
-          <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="重点城市天气对比" subtitle="所选日期实际返回城市">
-            <CityComparisonChart :data="cityComparisonDisplay" :loading="loading" :error="errors.comparison" />
-          </DashboardPanel>
-        </section>
-
-        <section class="dashboard-column center-column dashboard-map-column" aria-label="区域数据概览">
-          <DashboardPanel class="dashboard-map-panel" title="全国天气与空气质量地图" subtitle="真实行政区边界 · 点击地图进入下一级">
-            <CenterOverview
-              :location="dataRegion"
-              :weather="latestWeather"
-              :air-quality="latestAirQuality"
-              :air-quality-summary="dashboard?.airQualitySummary"
-              :statistics="basicStatistics"
-              :loading="loading"
-              :error="errors.overview"
-              @area-select="handleMapAreaSelect"
-              @map-reset="handleMapReset"
-            />
-          </DashboardPanel>
-        </section>
-
-        <section class="dashboard-column right-column dashboard-side-column dashboard-side-right" aria-label="空气质量数据">
-          <DashboardPanel class="dashboard-focus-panel" title="空气质量概况" subtitle="固定 AQI 快照 · 不随天气日期变化">
-            <AirQualityOverview
-              :air-quality="latestAirQuality"
-              :air-quality-summary="dashboard?.airQualitySummary"
-              :location="dataRegion"
-              :loading="loading"
-              :error="errors.airQuality"
-            />
-          </DashboardPanel>
-          <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="AQI 低值城市 TOP10" subtitle="固定快照 · 从低到高">
-            <AirQualityRankingChart :data="airQualityRanking" :loading="loading" :error="errors.ranking" />
-          </DashboardPanel>
-          <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="空气质量等级分布" subtitle="固定快照 · 实际返回等级">
-            <AirQualityDistributionChart :data="airQualityDistribution" :loading="loading" :error="errors.distribution" />
-          </DashboardPanel>
-        </section>
+            </DashboardPanel>
+            <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="AQI 低值城市 TOP10" subtitle="固定快照 · 从低到高">
+              <AirQualityRankingChart :data="airQualityRanking" :loading="loading" :error="errors.ranking" />
+            </DashboardPanel>
+            <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="空气质量等级分布" subtitle="固定快照 · 实际等级">
+              <AirQualityDistributionChart :data="airQualityDistribution" :loading="loading" :error="errors.distribution" />
+            </DashboardPanel>
+          </div>
+        </aside>
       </div>
     </div>
   </main>
