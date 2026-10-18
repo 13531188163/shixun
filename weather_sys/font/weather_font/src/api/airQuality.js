@@ -8,8 +8,8 @@ export function getAirQualityRanking(params) {
   return request.get('/air-quality/ranking', { params })
 }
 
-export function getAirQualityDistribution() {
-  return request.get('/air-quality/distribution')
+export function getAirQualityDistribution(params) {
+  return request.get('/air-quality/distribution', { params })
 }
 
 export function getAirQualityOverview(params) {

@@ -306,7 +306,20 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：地图选中后的城市、区县和数据日期选择器。
 - 数据可用状态：available。
 
-### 5.3 获取省级固定日期
+### 5.3 获取全国固定日期
+
+- 接口名称：获取全国天气历史日期
+- Method：GET
+- URL：/api/weather/national-dates
+- 业务用途：为首页首次进入和返回全国时提供 weather_data 中真实存在的观测日期。
+- Query 参数：无。
+- 数据来源表：weather_data.date。
+- 数据计算方式：校验 YYYY-MM-DD 后去重，按解析后的观测日期倒序返回，最多 1000 个日期；不代表实时数据。
+- HTTP Status：200、500。
+- 前端对应模块：首页全国范围日期选择器。
+- 数据可用状态：available。
+
+### 5.4 获取省级固定日期
 
 - 接口名称：获取省级天气历史日期
 - Method：GET
@@ -321,7 +334,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：省级地图选中后的固定日期选择器。
 - 数据可用状态：available。
 
-### 5.4 获取天气趋势
+### 5.5 获取天气趋势
 
 - 接口名称：获取天气趋势
 - Method：GET
@@ -368,7 +381,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：天气趋势图、历史风速/降水图。
 - 数据可用状态：available（历史趋势，不是预报）。
 
-### 5.5 获取省级天气趋势
+### 5.6 获取省级天气趋势
 
 - 接口名称：获取省级天气趋势
 - Method：GET
@@ -385,7 +398,20 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 前端对应模块：省级范围历史天气趋势图。
 - 数据可用状态：available（历史趋势，不是预报）。
 
-### 5.6 城市天气比较
+### 5.7 获取全国天气趋势
+
+- 接口名称：获取全国天气趋势
+- Method：GET
+- URL：/api/weather/national-trend
+- 业务用途：返回全国层级按区县 → 城市 → 省份 → 全国逐级平均后的历史天气日值。
+- Query 参数：date、days，均可选；days 为 1-90，date 为 YYYY-MM-DD。
+- 数据来源表：weather_data。
+- 数据计算方式：先对同一区县同一天取平均，再依次计算城市日值、省份日值和全国日值；按观测日期取截至 date 的最近 days 个日期，缺失日期不补零。
+- HTTP Status：200、400、500。
+- 前端对应模块：首页全国趋势图。
+- 数据可用状态：available（历史趋势，不是预报）。
+
+### 5.8 城市天气比较
 
 - 接口名称：城市天气比较
 - Method：GET
@@ -672,7 +698,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 参数类型：integer、string。
 - 是否必填：均否。
 - 默认值：limit=10；order=asc。
-- 参数约束：limit 为 1-100 整数；order 只能是 asc 或 desc；asc 表示 AQI 从低到高。
+- 参数约束：limit 为 1-100 整数；order 只能是 asc 或 desc；asc 表示 AQI 从低到高；可选 province、city 用于限定当前区域快照。
 - 数据来源表：air_quality_data.city、province、aqi、status。
 - 数据计算方式：aqi 转整数后排序并 LIMIT；无法转换的 aqi 不参与排名；并列按 city、id 稳定排序。
 - 成功示例：
@@ -715,7 +741,7 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - Method：GET
 - URL：/api/air-quality/distribution
 - 业务用途：统计当前空气质量快照中各 status 等级的城市数量。
-- Query 参数：无。
+- Query 参数：province、city，均可选；未提供时统计全国快照。
 - 参数类型：无。
 - 是否必填：无。
 - 默认值：无。
@@ -836,6 +862,19 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - HTTP Status：200、400、404、500。
 - 前端对应模块：全国地图省级点击后的中心概览、天气指标和省级趋势。
 - 数据可用状态：partial。省级天气聚合和可用 AQI 摘要可用；污染物、预警和健康建议不可用。
+
+### 9.3 全国 Dashboard 概览
+
+- 接口名称：全国 Dashboard 概览
+- Method：GET
+- URL：/api/dashboard/national-overview
+- 业务用途：首页首次进入或返回全国时返回全国天气聚合和全国 AQI 快照摘要。
+- Query 参数：date，可选；日期必须是 weather_data 中真实存在的 YYYY-MM-DD 观测日期。
+- 数据来源表：weather_data、air_quality_data。
+- 数据计算方式：天气按区县日值 → 城市日值 → 省份日值 → 全国日值逐级平均；空气质量使用独立固定快照，latestAirQuality 为 null，airQualitySummary 为全国城市样本统计。
+- 无数据时返回 404；不会以其他区域记录填充全国结果。
+- 前端对应模块：首页全国地图和天气概览。
+- 数据可用状态：partial。
 
 ## 10. 当前不提供的指标
 

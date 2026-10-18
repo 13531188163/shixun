@@ -196,6 +196,49 @@ def get_province_weather_overview(
     }
 
 
+def get_national_weather_overview(*, date: str | None = None) -> dict[str, Any] | None:
+    """Return the hierarchy-aware national weather value for one date."""
+
+    selected_date = _validate_observation_date(date) if date is not None else None
+    row = weather_model.get_national_weather_overview(selected_date)
+    if row is None:
+        return None
+    return {
+        "province": None,
+        "city": None,
+        "district": None,
+        "date": format_date(row.get("date")),
+        "weather": row.get("weather") or "全国多种天气",
+        "maxTemp": parse_temperature(row.get("max_temp")),
+        "minTemp": parse_temperature(row.get("min_temp")),
+        "avgWind": parse_wind_speed(row.get("avg_wind")),
+        "maxWind": parse_wind_speed(row.get("max_wind")),
+        "precipitation": parse_precipitation(row.get("total_precip")),
+        "scope": "country",
+        "cityCount": int(row.get("city_count") or 0),
+        "districtCount": int(row.get("district_count") or 0),
+        "recordCount": int(row.get("record_count") or 0),
+    }
+
+
+def get_national_weather_trend(
+    *, end_date: str | None = None, days: int = _DEFAULT_TREND_DAYS
+) -> list[dict[str, Any]]:
+    """Return hierarchy-aware national daily weather values."""
+
+    selected_date = _validate_observation_date(end_date) if end_date is not None else None
+    day_count = _validate_days(days)
+    rows = weather_model.get_national_weather_trend(end_date=selected_date, days=day_count)
+    return [_trend_payload(row) for row in reversed(rows)]
+
+
+def list_national_weather_dates() -> list[str]:
+    """Return all valid weather observation dates across the source table."""
+
+    rows = weather_model.get_national_weather_dates()
+    return [formatted for row in rows if (formatted := format_date(row.get("date"))) is not None]
+
+
 def get_province_weather_trend(
     *, province: str, days: int = _DEFAULT_TREND_DAYS, date: str | None = None
 ) -> list[dict[str, Any]]:

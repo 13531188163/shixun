@@ -27,6 +27,16 @@ class DashboardRouteTests(unittest.TestCase):
         response = self.client.get("/api/dashboard/overview?city=不存在")
         self.assertEqual(response.status_code, 404)
 
+    @patch(
+        "weather_sys.backend.routes.dashboard_routes.dashboard_service.get_national_dashboard_overview",
+        return_value={"location": {"scope": "country"}},
+    )
+    def test_national_overview_success(self, service):
+        response = self.client.get("/api/dashboard/national-overview?date=2026-05-22")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["data"]["location"]["scope"], "country")
+        service.assert_called_once_with(date="2026-05-22")
+
 
 if __name__ == "__main__":
     unittest.main()

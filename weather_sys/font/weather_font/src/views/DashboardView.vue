@@ -3,9 +3,11 @@ import { computed, onMounted, reactive, ref } from 'vue'
 
 import { getHealth } from '../api/health'
 import { getProvinces, getCities, getDistricts } from '../api/location'
-import { getDashboardOverview, getProvinceDashboardOverview } from '../api/dashboard'
+import { getDashboardOverview, getNationalDashboardOverview, getProvinceDashboardOverview } from '../api/dashboard'
 import {
   getWeatherDates,
+  getNationalWeatherDates,
+  getNationalWeatherTrend,
   getProvinceWeatherDates,
   getWeatherTrend,
   getProvinceWeatherTrend,
@@ -23,10 +25,15 @@ import AirQualityOverview from '../components/dashboard/AirQualityOverview.vue'
 import AirQualityRankingChart from '../components/dashboard/AirQualityRankingChart.vue'
 import AirQualityDistributionChart from '../components/dashboard/AirQualityDistributionChart.vue'
 import {
+  regionScope,
+  resolveRegionOption,
+} from '../utils/dashboardRegion'
+import {
   currentDate,
   dataRegion,
   setCurrentDate,
   setDataRegion,
+  setMapRegion,
 } from '../stores/regionStore'
 
 const provinces = ref([])
@@ -59,7 +66,7 @@ const errors = reactive({
 
 let requestVersion = 0
 let comparisonPoolPromise
-let sharedAirQualityPromise
+const airQualityPromises = new Map()
 
 const DIRECT_MUNICIPALITIES = new Set(['北京', '北京市', '上海', '上海市', '天津', '天津市', '重庆', '重庆市'])
 
@@ -73,7 +80,7 @@ const loading = computed(() => locationLoading.value || payloadLoading.value)
 const basicStatistics = computed(() => dashboard.value?.basicStatistics || null)
 const cityComparisonDisplay = computed(() => cityComparison.value.slice(0, 6))
 const locationReady = computed(() => Boolean(dataRegion.province))
-const isProvinceScope = computed(() => dataRegion.scope === 'province' || !dataRegion.city)
+const isProvinceScope = computed(() => dataRegion.scope === 'province' && Boolean(dataRegion.province))
 const dataDate = computed(() => currentDate.value || latestWeather.value?.date || basicStatistics.value?.weatherLatestDate || '')
 const apiStatus = computed(() => {
   if (pageError.value) return '需要检查 API'
@@ -95,6 +102,18 @@ function errorText(error, fallback) {
   return `${fallback}${error?.message ? `：${error.message}` : ''}`
 }
 
+function resolveProvince(value) {
+  return resolveRegionOption(provinces.value, value)
+}
+
+function resolveCity(value, options = cities.value) {
+  return resolveRegionOption(options, value)
+}
+
+function resolveDistrict(value) {
+  return resolveRegionOption(districts.value, value)
+}
+
 function buildLocationParams() {
   if (!dataRegion.province) return {}
   const params = { province: dataRegion.province, city: dataRegion.city }
@@ -109,21 +128,27 @@ function clearData() {
   latestAirQuality.value = null
   weatherTrend.value = []
   cityComparison.value = []
+  airQualityRanking.value = []
+  airQualityDistribution.value = []
   errors.overview = ''
   errors.weather = ''
   errors.trend = ''
   errors.comparison = ''
   errors.airQuality = ''
+  errors.ranking = ''
+  errors.distribution = ''
 }
 
 function resetDataSelection() {
   ++requestVersion
   setDataRegion({ province: '', city: '', district: '', scope: 'country' })
+  setMapRegion({ province: '', city: '', district: '', scope: 'country', path: [] })
   setCurrentDate('')
   cities.value = []
   districts.value = []
   availableDates.value = []
   comparisonPoolPromise = undefined
+  airQualityPromises.clear()
   clearData()
   pageError.value = ''
   locationLoading.value = false
@@ -143,36 +168,52 @@ async function comparisonCitiesFor(selectedCity) {
   return [...new Set([selectedCity, ...pool].filter(Boolean))].slice(0, 10)
 }
 
-async function ensureSharedAirQuality() {
-  if (!sharedAirQualityPromise) {
-    sharedAirQualityPromise = Promise.allSettled([
-      getAirQualityRanking({ limit: 10, order: 'asc' }),
-      getAirQualityDistribution(),
-    ]).then(([rankingResult, distributionResult]) => {
-      airQualityRanking.value = rankingResult.status === 'fulfilled' && Array.isArray(rankingResult.value.data)
-        ? rankingResult.value.data
-        : []
-      airQualityDistribution.value = distributionResult.status === 'fulfilled' && Array.isArray(distributionResult.value.data)
-        ? distributionResult.value.data
-        : []
-      errors.ranking = rankingResult.status === 'rejected'
-        ? errorText(rankingResult.reason, '空气质量排名读取失败')
-        : ''
-      errors.distribution = distributionResult.status === 'rejected'
-        ? errorText(distributionResult.reason, '空气质量分布读取失败')
-        : ''
-    })
+function airQualityParams() {
+  if (dataRegion.district) return null
+  if (!dataRegion.province) return {}
+  const params = { province: dataRegion.province }
+  if (dataRegion.city) params.city = dataRegion.city
+  return params
+}
+
+async function ensureSharedAirQuality(version) {
+  const params = airQualityParams()
+  if (!params) return { ranking: [], distribution: [], rankingError: '', distributionError: '' }
+  const key = `${params.province || 'country'}::${params.city || ''}`
+  if (!airQualityPromises.has(key)) {
+    const requestParams = { ...params, limit: 10, order: 'asc' }
+    const distributionParams = { ...params }
+    airQualityPromises.set(key, Promise.allSettled([
+      getAirQualityRanking(requestParams),
+      getAirQualityDistribution(distributionParams),
+    ]).then(([rankingResult, distributionResult]) => ({
+      ranking: rankingResult.status === 'fulfilled' && Array.isArray(rankingResult.value.data)
+        ? rankingResult.value.data : [],
+      distribution: distributionResult.status === 'fulfilled' && Array.isArray(distributionResult.value.data)
+        ? distributionResult.value.data : [],
+      rankingError: rankingResult.status === 'rejected'
+        ? errorText(rankingResult.reason, '空气质量排名读取失败') : '',
+      distributionError: distributionResult.status === 'rejected'
+        ? errorText(distributionResult.reason, '空气质量分布读取失败') : '',
+    })))
   }
-  await sharedAirQualityPromise
+  const result = await airQualityPromises.get(key)
+  if (version !== requestVersion) return null
+  airQualityRanking.value = result.ranking
+  airQualityDistribution.value = result.distribution
+  errors.ranking = result.rankingError
+  errors.distribution = result.distributionError
+  return result
 }
 
 async function loadSelectedData(version) {
-  if (!dataRegion.province || version !== requestVersion) return
+  if (version !== requestVersion) return
 
   payloadLoading.value = true
   const params = buildLocationParams()
   const overviewParams = currentDate.value ? { ...params, date: currentDate.value } : params
   const dateParams = currentDate.value ? { date: currentDate.value } : {}
+  const nationalScope = dataRegion.scope === 'country' || !dataRegion.province
   const provinceScope = isProvinceScope.value
   let comparisonCities = []
   if (provinceScope) {
@@ -186,24 +227,37 @@ async function loadSelectedData(version) {
   }
   if (version !== requestVersion) return
 
-  const requestsToMake = provinceScope
+  const comparisonParams = {
+    cities: comparisonCities.join(','),
+    ...dateParams,
+    ...(!nationalScope && dataRegion.province ? { province: dataRegion.province } : {}),
+  }
+  const requestsToMake = nationalScope
+    ? [
+        getNationalDashboardOverview(overviewParams),
+        getNationalWeatherTrend({ ...dateParams, days: 7 }),
+        comparisonCities.length
+          ? getCityWeatherComparison(comparisonParams)
+          : Promise.resolve({ data: [] }),
+      ]
+    : provinceScope
     ? [
         getProvinceDashboardOverview(overviewParams),
         getProvinceWeatherTrend({ province: dataRegion.province, ...dateParams, days: 7 }),
         comparisonCities.length
-          ? getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams })
+            ? getCityWeatherComparison(comparisonParams)
           : Promise.resolve({ data: [] }),
       ]
     : [
         getDashboardOverview(overviewParams),
         getWeatherTrend({ ...params, ...dateParams, days: 7 }),
-        getCityWeatherComparison({ cities: comparisonCities.join(','), ...dateParams }),
+          getCityWeatherComparison(comparisonParams),
       ]
   const [requests] = await Promise.all([
     Promise.allSettled([
       ...requestsToMake,
     ]),
-    ensureSharedAirQuality(),
+    ensureSharedAirQuality(version),
   ])
   if (version !== requestVersion) return
 
@@ -211,24 +265,36 @@ async function loadSelectedData(version) {
   dashboard.value = overviewResult.status === 'fulfilled' ? (overviewResult.value.data || null) : null
 
   const overviewWeather = dashboard.value?.latestWeather || null
-  const overviewAirQuality = dashboard.value?.latestAirQuality || null
+  const overviewAirQuality = dataRegion.district ? null : (dashboard.value?.latestAirQuality || null)
   latestWeather.value = overviewWeather
   latestAirQuality.value = overviewAirQuality
   weatherTrend.value = trendResult.status === 'fulfilled' && Array.isArray(trendResult.value.data) ? trendResult.value.data : []
   cityComparison.value = comparisonResult.status === 'fulfilled' && Array.isArray(comparisonResult.value.data) ? comparisonResult.value.data : []
 
-  errors.overview = overviewResult.status === 'rejected' && !dashboard.value ? errorText(overviewResult.reason, '概览接口暂时不可用') : ''
-  errors.weather = !latestWeather.value && errors.overview ? '天气数据暂无' : ''
+  const noWeatherMessage = dataRegion.district
+    ? `${dataRegion.district}所选日期暂无天气观测`
+    : dataRegion.city
+      ? `${dataRegion.city}所选日期暂无天气观测`
+      : dataRegion.province
+        ? `${dataRegion.province}所选日期暂无天气观测`
+        : '全国暂无天气观测'
+  errors.overview = overviewResult.status === 'rejected' && !dashboard.value
+    ? (isNotFound(overviewResult.reason) ? noWeatherMessage : errorText(overviewResult.reason, '概览接口暂时不可用'))
+    : ''
+  errors.weather = !latestWeather.value ? (errors.overview || noWeatherMessage) : ''
   errors.trend = trendResult.status === 'rejected' ? errorText(trendResult.reason, '天气历史趋势读取失败') : ''
   errors.comparison = comparisonResult.status === 'rejected' ? errorText(comparisonResult.reason, '城市比较读取失败') : ''
   errors.airQuality = !latestAirQuality.value && errors.overview ? '空气质量数据暂无' : ''
+  if (dataRegion.district) errors.airQuality = '当前区县暂无对应 AQI 快照'
   payloadLoading.value = false
 }
 
 async function loadAvailableDates(version) {
-  if (!dataRegion.province || version !== requestVersion) return
+  if (version !== requestVersion) return
   try {
-    const response = isProvinceScope.value
+    const response = dataRegion.scope === 'country' || !dataRegion.province
+      ? await getNationalWeatherDates()
+      : isProvinceScope.value
       ? await getProvinceWeatherDates({ province: dataRegion.province })
       : await getWeatherDates(buildLocationParams())
     if (version !== requestVersion) return
@@ -244,29 +310,33 @@ async function loadAvailableDates(version) {
   }
 }
 
-async function loadDistrictsAndData(version) {
-  if (!dataRegion.province || !dataRegion.city || version !== requestVersion) return
-  try {
-    const response = await getDistricts({ province: dataRegion.province, city: dataRegion.city })
-    if (version !== requestVersion) return
-    districts.value = Array.isArray(response.data) ? response.data : []
-    if (!districts.value.includes(dataRegion.district)) {
-      setDataRegion({ ...dataRegion, district: '' })
+async function selectRegion({ province = '', city = '', district = '', syncMap = true } = {}) {
+  const nextProvince = resolveProvince(province)
+  const nextCity = resolveCity(city, nextProvince === dataRegion.province ? cities.value : [])
+  const nextDistrict = resolveDistrict(district)
+  const nextScope = regionScope(nextProvince, nextCity, nextDistrict)
+  const sameRegion = dataRegion.province === nextProvince
+    && dataRegion.city === nextCity
+    && dataRegion.district === nextDistrict
+    && dataRegion.scope === nextScope
+  if (sameRegion && availableDates.value.length) {
+    if (syncMap) {
+      setMapRegion({ province: nextProvince, city: nextCity, district: nextDistrict, scope: nextScope, path: [] })
     }
-  } catch (error) {
-    if (version !== requestVersion) return
-    districts.value = []
-    setDataRegion({ ...dataRegion, district: '' })
-    // A missing district list is a valid empty state; a server error remains visible.
-    if (!isNotFound(error)) pageError.value = errorText(error, '区县列表读取失败')
+    return
   }
-  await loadAvailableDates(version)
-  await loadSelectedData(version)
-}
 
-async function handleProvinceChange(province) {
   const version = ++requestVersion
-  setDataRegion({ province, city: '', district: '', scope: province ? 'province' : 'country' })
+  setDataRegion({ province: nextProvince, city: nextCity, district: nextDistrict, scope: nextScope })
+  if (syncMap) {
+    setMapRegion({
+      province: nextProvince,
+      city: nextCity,
+      district: nextDistrict,
+      scope: nextScope,
+      path: [],
+    })
+  }
   setCurrentDate('')
   cities.value = []
   districts.value = []
@@ -274,59 +344,39 @@ async function handleProvinceChange(province) {
   comparisonPoolPromise = undefined
   clearData()
   pageError.value = ''
-  if (!province) {
-    locationLoading.value = false
-    payloadLoading.value = false
-    return
-  }
-
   locationLoading.value = true
   payloadLoading.value = true
+
   try {
-    const response = await getCities({ province })
-    if (version !== requestVersion) return
-    cities.value = Array.isArray(response.data) ? response.data : []
-    if (!cities.value.length) {
-      pageError.value = '该省份暂无城市数据'
+    if (nextProvince) {
+      try {
+        const cityResponse = await getCities({ province: nextProvince })
+        if (version !== requestVersion) return
+        cities.value = Array.isArray(cityResponse.data) ? cityResponse.data : []
+      } catch (error) {
+        if (version !== requestVersion) return
+        cities.value = []
+        if (!isNotFound(error)) pageError.value = errorText(error, '城市列表读取失败')
+      }
+      if (nextCity && !cities.value.includes(nextCity)) cities.value = [...cities.value, nextCity]
+
+      if (nextCity) {
+        try {
+          const districtResponse = await getDistricts({ province: nextProvince, city: nextCity })
+          if (version !== requestVersion) return
+          districts.value = Array.isArray(districtResponse.data) ? districtResponse.data : []
+        } catch (error) {
+          if (version !== requestVersion) return
+          districts.value = []
+          if (!isNotFound(error)) pageError.value = errorText(error, '区县列表读取失败')
+        }
+        if (nextDistrict && !districts.value.includes(nextDistrict)) {
+          districts.value = [...districts.value, nextDistrict]
+        }
+      }
     }
     await loadAvailableDates(version)
     await loadSelectedData(version)
-  } catch (error) {
-    if (version === requestVersion) pageError.value = errorText(error, '城市列表读取失败')
-  } finally {
-    if (version === requestVersion) {
-      locationLoading.value = false
-      payloadLoading.value = false
-    }
-  }
-}
-
-async function handleCityChange(city) {
-  const version = ++requestVersion
-  setDataRegion({ ...dataRegion, city, district: '', scope: city ? 'city' : 'province' })
-  setCurrentDate('')
-  districts.value = []
-  availableDates.value = []
-  clearData()
-  pageError.value = ''
-  if (!city) {
-    locationLoading.value = true
-    payloadLoading.value = true
-    try {
-      await loadAvailableDates(version)
-      await loadSelectedData(version)
-    } finally {
-      if (version === requestVersion) {
-        locationLoading.value = false
-        payloadLoading.value = false
-      }
-    }
-    return
-  }
-  locationLoading.value = true
-  payloadLoading.value = true
-  try {
-    await loadDistrictsAndData(version)
   } catch (error) {
     if (version === requestVersion) pageError.value = errorText(error, '地区数据读取失败')
   } finally {
@@ -337,23 +387,29 @@ async function handleCityChange(city) {
   }
 }
 
+async function handleProvinceChange(province) {
+  await selectRegion({ province })
+}
+
+async function handleCityChange(city) {
+  await selectRegion({ province: dataRegion.province, city })
+}
+
 async function handleDistrictChange(district) {
-  const version = ++requestVersion
-  setDataRegion({ ...dataRegion, district })
-  setCurrentDate('')
-  availableDates.value = []
-  clearData()
-  pageError.value = ''
-  locationLoading.value = true
-  try {
-    await loadAvailableDates(version)
-    await loadSelectedData(version)
-  } finally {
-    if (version === requestVersion) {
-      locationLoading.value = false
-      payloadLoading.value = false
-    }
-  }
+  await selectRegion({ province: dataRegion.province, city: dataRegion.city, district })
+}
+
+async function handleMapAreaSelect(payload = {}) {
+  await selectRegion({
+    province: payload.province,
+    city: payload.city,
+    district: payload.district,
+    syncMap: false,
+  })
+}
+
+async function handleMapReset() {
+  await selectRegion({ syncMap: false })
 }
 
 async function handleDateChange(date) {
@@ -386,7 +442,8 @@ async function loadInitial() {
     payloadLoading.value = false
     return
   }
-  await ensureSharedAirQuality()
+  await loadAvailableDates(version)
+  await loadSelectedData(version)
   if (version === requestVersion) {
     locationLoading.value = false
     payloadLoading.value = false
@@ -453,30 +510,30 @@ onMounted(loadInitial)
     <div class="dashboard-content">
       <p v-if="pageError" class="dashboard-alert" role="alert">{{ pageError }}</p>
 
-      <div class="dashboard-grid">
-        <section class="dashboard-column left-column" aria-label="天气数据">
-          <DashboardPanel title="当前天气概况" subtitle="weather/latest · 所选固定日期记录">
-            <WeatherOverview :weather="latestWeather" :loading="loading" :error="errors.weather" />
+      <div class="dashboard-grid dashboard-screen-grid">
+        <section class="dashboard-column left-column dashboard-side-column dashboard-side-left" aria-label="天气数据">
+          <DashboardPanel class="dashboard-focus-panel dashboard-weather-focus" title="核心天气指标" subtitle="所选区域 · 固定日期真实观测">
+            <div class="weather-focus-content">
+              <WeatherOverview :weather="latestWeather" :loading="loading" :error="errors.weather" />
+              <WeatherMetrics
+                :weather="latestWeather"
+                :air-quality="latestAirQuality"
+                :air-quality-summary="dashboard?.airQualitySummary"
+                :loading="loading"
+                :error="errors.weather"
+              />
+            </div>
           </DashboardPanel>
-          <DashboardPanel title="天气指标" subtitle="仅展示数据库支持的天气字段">
-            <WeatherMetrics
-              :weather="latestWeather"
-              :air-quality="latestAirQuality"
-              :air-quality-summary="dashboard?.airQualitySummary"
-              :loading="loading"
-              :error="errors.weather"
-            />
-          </DashboardPanel>
-          <DashboardPanel title="主要城市温度比较" subtitle="city-comparison · 所选日期实际返回城市">
-            <CityComparisonChart :data="cityComparisonDisplay" :loading="loading" :error="errors.comparison" />
-          </DashboardPanel>
-          <DashboardPanel title="历史天气趋势" subtitle="trend · 所选日期向前 7 个观测日，不代表预报">
+          <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="近7日天气趋势" subtitle="历史观测 · 不代表天气预报">
             <WeatherTrendChart :data="weatherTrend" :loading="loading" :error="errors.trend" />
+          </DashboardPanel>
+          <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="重点城市天气对比" subtitle="所选日期实际返回城市">
+            <CityComparisonChart :data="cityComparisonDisplay" :loading="loading" :error="errors.comparison" />
           </DashboardPanel>
         </section>
 
-        <section class="dashboard-column center-column" aria-label="区域数据概览">
-          <DashboardPanel title="区域数据概览" subtitle="dashboard/overview · 省级或城市真实 API 聚合">
+        <section class="dashboard-column center-column dashboard-map-column" aria-label="区域数据概览">
+          <DashboardPanel class="dashboard-map-panel" title="全国天气与空气质量地图" subtitle="真实行政区边界 · 点击地图进入下一级">
             <CenterOverview
               :location="dataRegion"
               :weather="latestWeather"
@@ -485,12 +542,14 @@ onMounted(loadInitial)
               :statistics="basicStatistics"
               :loading="loading"
               :error="errors.overview"
+              @area-select="handleMapAreaSelect"
+              @map-reset="handleMapReset"
             />
           </DashboardPanel>
         </section>
 
-        <section class="dashboard-column right-column" aria-label="空气质量数据">
-          <DashboardPanel title="空气质量概况" subtitle="air-quality/latest · 固定快照，不随天气日期变化">
+        <section class="dashboard-column right-column dashboard-side-column dashboard-side-right" aria-label="空气质量数据">
+          <DashboardPanel class="dashboard-focus-panel" title="空气质量概况" subtitle="固定 AQI 快照 · 不随天气日期变化">
             <AirQualityOverview
               :air-quality="latestAirQuality"
               :air-quality-summary="dashboard?.airQualitySummary"
@@ -499,10 +558,10 @@ onMounted(loadInitial)
               :error="errors.airQuality"
             />
           </DashboardPanel>
-          <DashboardPanel title="AQI 低值城市 TOP10" subtitle="ranking · 固定快照，从低到高（越低越好）">
+          <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="AQI 低值城市 TOP10" subtitle="固定快照 · 从低到高">
             <AirQualityRankingChart :data="airQualityRanking" :loading="loading" :error="errors.ranking" />
           </DashboardPanel>
-          <DashboardPanel title="空气质量等级分布" subtitle="distribution · 固定快照实际返回等级">
+          <DashboardPanel class="dashboard-focus-panel dashboard-chart-panel" title="空气质量等级分布" subtitle="固定快照 · 实际返回等级">
             <AirQualityDistributionChart :data="airQualityDistribution" :loading="loading" :error="errors.distribution" />
           </DashboardPanel>
         </section>

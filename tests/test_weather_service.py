@@ -66,6 +66,43 @@ class WeatherServiceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             weather_service.get_weather_trend(city="北京", days=0)
 
+    @patch("weather_sys.backend.services.weather_service.weather_model.get_national_weather_dates")
+    def test_national_dates_are_converted_from_source_rows(self, model_call) -> None:
+        model_call.return_value = [{"date": "2026-05-22"}, {"date": "bad"}]
+        self.assertEqual(weather_service.list_national_weather_dates(), ["2026-05-22"])
+        model_call.assert_called_once_with()
+
+    @patch("weather_sys.backend.services.weather_service.weather_model.get_national_weather_trend")
+    def test_national_trend_uses_real_end_date_and_returns_ascending(self, model_call) -> None:
+        model_call.return_value = [
+            {"date": "2026-05-22", "max_temp": "20℃", "min_temp": "10℃", "avg_wind": "2", "max_wind": "5", "total_precip": "0"},
+            {"date": "2026-05-21", "max_temp": "19℃", "min_temp": "9℃", "avg_wind": "1", "max_wind": "4", "total_precip": "1.2"},
+        ]
+        result = weather_service.get_national_weather_trend(end_date="2026-05-22", days=2)
+        self.assertEqual([row["date"] for row in result], ["2026-05-21", "2026-05-22"])
+        model_call.assert_called_once_with(end_date="2026-05-22", days=2)
+
+    @patch("weather_sys.backend.services.weather_service.weather_model.get_national_weather_overview")
+    def test_national_overview_marks_country_scope_and_preserves_empty_values(self, model_call) -> None:
+        model_call.return_value = {
+            "date": "2026-05-22",
+            "weather": "全国多种天气",
+            "max_temp": "20℃",
+            "min_temp": "-2℃",
+            "avg_wind": "1.25",
+            "max_wind": "5.6",
+            "total_precip": None,
+            "city_count": 100,
+            "district_count": 200,
+            "record_count": 300,
+        }
+        result = weather_service.get_national_weather_overview(date="2026-05-22")
+        self.assertEqual(result["scope"], "country")
+        self.assertEqual(result["maxTemp"], 20)
+        self.assertEqual(result["minTemp"], -2)
+        self.assertIsNone(result["precipitation"])
+        model_call.assert_called_once_with("2026-05-22")
+
 
 if __name__ == "__main__":
     unittest.main()

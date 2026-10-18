@@ -75,6 +75,7 @@ def get_air_quality_ranking(
     limit: int = 10,
     order: str = "asc",
     province: str | None = None,
+    city: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return AQI rows ordered numerically, not lexicographically."""
 
@@ -83,7 +84,7 @@ def get_air_quality_ranking(
     if normalized_order not in {"asc", "desc"}:
         raise ValueError("order must be 'asc' or 'desc'")
     direction = "ASC" if normalized_order == "asc" else "DESC"
-    clauses, params = _location_filters(province=province)
+    clauses, params = _location_filters(province=province, city=city)
     clauses.append("TRIM(aqi) REGEXP '^[0-9]+$'")
     sql = (
         f"SELECT {_AIR_SELECT} FROM air_quality_data "

@@ -7,3 +7,7 @@ export function getDashboardOverview(params) {
 export function getProvinceDashboardOverview(params) {
   return request.get('/dashboard/province-overview', { params })
 }
+
+export function getNationalDashboardOverview(params) {
+  return request.get('/dashboard/national-overview', { params })
+}

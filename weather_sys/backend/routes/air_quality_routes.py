@@ -35,13 +35,27 @@ def latest_air_quality():
 def air_quality_ranking():
     limit = integer_param("limit", default=10, minimum=1, maximum=100)
     order = enum_param("order", default="asc", choices=("asc", "desc"))
-    data = air_quality_service.get_air_quality_ranking(limit=limit, order=order)
+    params = {"limit": limit, "order": order}
+    province = name_param("province")
+    city = name_param("city")
+    if province is not None:
+        params["province"] = province
+    if city is not None:
+        params["city"] = city
+    data = air_quality_service.get_air_quality_ranking(**params)
     return success_response(data=data, meta={"limit": limit, "order": order})
 
 
 @air_quality_bp.get("/distribution")
 def air_quality_distribution():
-    result = air_quality_service.get_air_quality_distribution_result()
+    params = {}
+    province = name_param("province")
+    city = name_param("city")
+    if province is not None:
+        params["province"] = province
+    if city is not None:
+        params["city"] = city
+    result = air_quality_service.get_air_quality_distribution_result(**params)
     return success_response(data=result["data"], meta=result["meta"])
 
 

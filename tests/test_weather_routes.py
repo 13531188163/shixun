@@ -62,6 +62,26 @@ class WeatherRouteTests(unittest.TestCase):
         cities = ",".join([f"城市{i}" for i in range(11)])
         self.assertEqual(self.client.get(f"/api/weather/city-comparison?cities={cities}").status_code, 400)
 
+    @patch(
+        "weather_sys.backend.routes.weather_routes.weather_service.list_national_weather_dates",
+        return_value=["2026-05-22", "2026-05-21"],
+    )
+    def test_national_dates_success(self, service):
+        response = self.client.get("/api/weather/national-dates")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["data"], ["2026-05-22", "2026-05-21"])
+        service.assert_called_once_with()
+
+    @patch(
+        "weather_sys.backend.routes.weather_routes.weather_service.get_national_weather_trend",
+        return_value=[{"date": "2026-05-22"}],
+    )
+    def test_national_trend_success(self, service):
+        response = self.client.get("/api/weather/national-trend?date=2026-05-22&days=3")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["meta"], {"days": 3, "scope": "country"})
+        service.assert_called_once_with(end_date="2026-05-22", days=3)
+
 
 if __name__ == "__main__":
     unittest.main()

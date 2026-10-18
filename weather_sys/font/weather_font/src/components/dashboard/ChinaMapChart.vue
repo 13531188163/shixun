@@ -16,6 +16,7 @@ import {
 } from '../../utils/administrativeMap'
 import { mapRegion, setMapRegion } from '../../stores/regionStore'
 import { fitGeoBounds, geoJsonBounds } from '../../utils/mapGeometry'
+import { comparableRegionName } from '../../utils/dashboardRegion'
 
 const props = defineProps({
   location: { type: Object, default: null },
@@ -43,6 +44,7 @@ const isExpanded = ref(false)
 const mapViewport = ref({ width: 0, height: 0 })
 const navigation = ref([{ adcode: NATIONAL_ADCODE, name: '全国', level: 'country', parentAdcode: '' }])
 let mapRequestVersion = 0
+let mapSyncVersion = 0
 let mapViewportObserver = null
 const registeredMapNames = new Set()
 
@@ -63,8 +65,7 @@ function compactName(value) {
 }
 
 function comparableName(value) {
-  return String(value || '').trim().replace(/\s+/gu, '')
-    .replace(/特别行政区|自治区|自治州|地区|盟|省|市$/u, '')
+  return comparableRegionName(value)
 }
 
 function nodeFromFeature(feature) {
@@ -399,19 +400,80 @@ function handleKeydown(event) {
   }
 }
 
-watch(() => mapRegion.province, async (province) => {
-  if (!province || !currentMap.value) return
-  const pathProvince = navigation.value.find((item) => item.level === 'province')
-  if (!pathProvince || comparableName(pathProvince.name) === comparableName(province)) return
+function featureByName(name, features = currentFeatures.value) {
+  const target = comparableName(name)
+  if (!target) return null
+  return features.find((feature) => comparableName(featureName(feature)) === target) || null
+}
+
+async function syncMapToDataRegion() {
+  const syncVersion = ++mapSyncVersion
   const root = navigation.value[0]
-  selectedAdcode.value = ''
+  const provinceName = mapRegion.province
+  const cityName = mapRegion.city
+  const districtName = mapRegion.district
   terminalMessage.value = ''
-  if (currentMap.value.adcode === root.adcode) {
+
+  if (!provinceName) {
+    if (currentMap.value?.adcode !== root.adcode) {
+      await loadMapAt(root, [root], '')
+      if (syncVersion !== mapSyncVersion) return
+    }
+    selectedAdcode.value = ''
     navigation.value = [root]
     emitNavigation()
     return
   }
-  await loadMapAt(root, [root], '')
+
+  if (currentMap.value?.adcode !== root.adcode) {
+    await loadMapAt(root, [root], '')
+    if (syncVersion !== mapSyncVersion) return
+  }
+  const provinceFeature = featureByName(provinceName)
+  if (!provinceFeature) {
+    terminalMessage.value = `地图资源中未找到${provinceName}的行政区边界`
+    return
+  }
+  const provinceNode = nodeFromFeature(provinceFeature)
+  const provincePath = [root, provinceNode]
+  if (currentMap.value?.adcode !== provinceNode.adcode) {
+    await loadMapAt(provinceNode, provincePath, provinceNode.adcode)
+    if (syncVersion !== mapSyncVersion) return
+  }
+  selectedAdcode.value = provinceNode.adcode
+
+  if (!cityName) {
+    navigation.value = provincePath
+    emitNavigation()
+    return
+  }
+  const cityFeature = featureByName(cityName)
+  if (!cityFeature) {
+    terminalMessage.value = `当前省份地图中未找到${cityName}的行政区边界`
+    navigation.value = provincePath
+    emitNavigation()
+    return
+  }
+  const cityNode = nodeFromFeature(cityFeature)
+  const cityPath = [...provincePath, cityNode]
+  if (currentMap.value?.adcode !== cityNode.adcode) {
+    await loadMapAt(cityNode, cityPath, cityNode.adcode)
+    if (syncVersion !== mapSyncVersion) return
+  }
+  selectedAdcode.value = cityNode.adcode
+  navigation.value = cityPath
+  if (districtName) {
+    const districtFeature = featureByName(districtName)
+    if (districtFeature) selectedAdcode.value = featureAdcode(districtFeature)
+  }
+  emitNavigation()
+}
+
+watch(() => [mapRegion.province, mapRegion.city, mapRegion.district, mapRegion.scope, mapRegion.path], async () => {
+  // Map clicks and breadcrumbs already changed the map navigation themselves.
+  // An empty path marks a top filter selection that needs map synchronization.
+  if (mapRegion.path?.length || !mapReady.value) return
+  await syncMapToDataRegion()
 })
 
 onMounted(() => {

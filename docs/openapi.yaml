@@ -123,6 +123,17 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/weather/national-dates:
+    get:
+      tags: [Weather]
+      summary: List national historical weather dates
+      description: Returns real observation dates available across all weather_data rows.
+      operationId: listNationalWeatherDates
+      responses:
+        '200':
+          $ref: '#/components/responses/WeatherDatesSuccess'
+        '500':
+          $ref: '#/components/responses/ServerError'
   /api/weather/trend:
     get:
       tags: [Weather]
@@ -176,6 +187,22 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/weather/national-trend:
+    get:
+      tags: [Weather]
+      summary: Get national historical weather trend
+      description: Aggregates district, city and province daily values into national daily values; this is not a forecast.
+      operationId: getNationalWeatherTrend
+      parameters:
+        - $ref: '#/components/parameters/DateOptional'
+        - $ref: '#/components/parameters/Days'
+      responses:
+        '200':
+          $ref: '#/components/responses/WeatherTrendSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/ServerError'
   /api/weather/city-comparison:
@@ -496,6 +523,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Order'
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
       responses:
         '200':
           $ref: '#/components/responses/AirQualityRankingSuccess'
@@ -508,6 +537,9 @@ paths:
       tags: [Air Quality]
       summary: Count cities by AQI status
       operationId: getAirQualityDistribution
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
       responses:
         '200':
           $ref: '#/components/responses/AirQualityDistributionSuccess'
@@ -548,6 +580,23 @@ paths:
       responses:
         '200':
           $ref: '#/components/responses/ProvinceDashboardSuccess'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/dashboard/national-overview:
+    get:
+      tags: [Dashboard]
+      summary: Get national dashboard overview
+      description: Returns hierarchy-aware national weather aggregation and an independent national AQI snapshot summary.
+      operationId: getNationalDashboardOverview
+      parameters:
+        - $ref: '#/components/parameters/DateOptional'
+      responses:
+        '200':
+          $ref: '#/components/responses/DashboardSuccess'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':

@@ -32,3 +32,12 @@ def province_dashboard_overview():
     if data is None:
         return error_response("province dashboard data not found", http_status=404)
     return success_response(data=data)
+
+
+@dashboard_bp.get("/national-overview")
+def national_dashboard_overview():
+    selected_date = date_param()
+    data = dashboard_service.get_national_dashboard_overview(date=selected_date)
+    if data is None:
+        return error_response("national dashboard data not found", http_status=404)
+    return success_response(data=data)

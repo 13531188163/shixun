@@ -85,6 +85,7 @@ def get_air_quality_ranking(
     limit: int = 10,
     order: str = "asc",
     province: str | None = None,
+    city: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return numeric AQI ranking rows with one-based rank values."""
 
@@ -93,8 +94,9 @@ def get_air_quality_ranking(
     if not isinstance(order, str) or order.strip().lower() not in {"asc", "desc"}:
         raise ValueError("order must be asc or desc")
     province_value = _optional_text(province, "province")
+    city_value = _optional_text(city, "city")
     rows = air_quality_model.get_air_quality_ranking(
-        limit=limit, order=order.strip().lower(), province=province_value
+        limit=limit, order=order.strip().lower(), province=province_value, city=city_value
     )
     return [
         {
@@ -130,10 +132,12 @@ def get_air_quality_distribution(
     return result
 
 
-def get_air_quality_distribution_result() -> dict[str, Any]:
+def get_air_quality_distribution_result(
+    *, city: str | None = None, province: str | None = None
+) -> dict[str, Any]:
     """Return distribution data and its contract metadata."""
 
-    data = get_air_quality_distribution()
+    data = get_air_quality_distribution(city=city, province=province)
     return {
         "data": data,
         "meta": {"totalKnown": sum(int(row.get("count") or 0) for row in data)},

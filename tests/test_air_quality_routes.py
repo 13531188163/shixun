@@ -34,6 +34,14 @@ class AirQualityRouteTests(unittest.TestCase):
         for query in ("limit=abc", "limit=-1", "order=invalid"):
             self.assertEqual(self.client.get(f"/api/air-quality/ranking?{query}").status_code, 400)
 
+    @patch("weather_sys.backend.routes.air_quality_routes.air_quality_service.get_air_quality_ranking", return_value=[])
+    def test_ranking_accepts_region_scope(self, service):
+        response = self.client.get(
+            "/api/air-quality/ranking?province=四川&city=广安&limit=5&order=desc"
+        )
+        self.assertEqual(response.status_code, 200)
+        service.assert_called_once_with(limit=5, order="desc", province="四川", city="广安")
+
     @patch(
         "weather_sys.backend.routes.air_quality_routes.air_quality_service.get_air_quality_distribution_result",
         return_value={

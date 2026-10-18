@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import ChartState from './ChartState.vue'
 import ChinaMapChart from './ChinaMapChart.vue'
 import { formatNumber, formatDateTime, formatTemperature } from '../../utils/formatters'
@@ -14,6 +15,13 @@ const props = defineProps({
   error: { type: String, default: '' },
 })
 const emit = defineEmits(['area-select', 'map-reset'])
+const aqiLabel = computed(() => {
+  if (props.airQuality?.status) return props.airQuality.status
+  if (props.airQualitySummary) {
+    return props.location?.scope === 'country' ? '全国城市样本平均' : '省级平均 AQI'
+  }
+  return '暂无等级'
+})
 </script>
 
 <template>
@@ -29,7 +37,7 @@ const emit = defineEmits(['area-select', 'map-reset'])
         <div class="center-aqi">
           <span>AQI</span>
           <strong>{{ formatNumber(airQuality?.aqi ?? airQualitySummary?.averageAqi) }}</strong>
-          <small>{{ airQuality?.status || (airQualitySummary ? '省级平均 AQI' : '暂无等级') }}</small>
+          <small>{{ aqiLabel }}</small>
         </div>
       </div>
 

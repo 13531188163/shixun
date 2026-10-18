@@ -298,6 +298,152 @@ def get_province_weather_overview(province: str, date: str | None = None) -> dic
             )
 
 
+def _national_weather_ctes(where_sql: str) -> str:
+    """Build hierarchy-aware daily weather CTEs for the national scope.
+
+    ``weather_data`` is stored at district level.  The national value is
+    therefore calculated as district-day mean → city-day mean → province-day
+    mean → national-day mean, so rows from regions with more districts do not
+    receive a larger weight.
+    """
+
+    max_temp = _numeric_expression("max_temp", temperature=True)
+    min_temp = _numeric_expression("min_temp", temperature=True)
+    avg_wind = _numeric_expression("avg_wind")
+    max_wind = _numeric_expression("max_wind")
+    precipitation = _numeric_expression("total_precip")
+    district_key = "COALESCE(NULLIF(TRIM(district), ''), '__unknown__')"
+    district_daily = (
+        "SELECT province, city, "
+        f"{district_key} AS district, date, "
+        f"AVG({max_temp}) AS max_temp, AVG({min_temp}) AS min_temp, "
+        f"AVG({avg_wind}) AS avg_wind, AVG({max_wind}) AS max_wind, "
+        f"AVG({precipitation}) AS total_precip "
+        "FROM weather_data "
+        f"WHERE {where_sql} "
+        f"GROUP BY province, city, {district_key}, date"
+    )
+    city_daily = (
+        "SELECT province, city, date, AVG(max_temp) AS max_temp, "
+        "AVG(min_temp) AS min_temp, AVG(avg_wind) AS avg_wind, "
+        "AVG(max_wind) AS max_wind, AVG(total_precip) AS total_precip "
+        f"FROM ({district_daily}) AS district_daily "
+        "GROUP BY province, city, date"
+    )
+    province_daily = (
+        "SELECT province, date, AVG(max_temp) AS max_temp, "
+        "AVG(min_temp) AS min_temp, AVG(avg_wind) AS avg_wind, "
+        "AVG(max_wind) AS max_wind, AVG(total_precip) AS total_precip "
+        f"FROM ({city_daily}) AS city_daily "
+        "GROUP BY province, date"
+    )
+    national_daily = (
+        "SELECT date, AVG(max_temp) AS max_temp, AVG(min_temp) AS min_temp, "
+        "AVG(avg_wind) AS avg_wind, AVG(max_wind) AS max_wind, "
+        "AVG(total_precip) AS total_precip "
+        f"FROM ({province_daily}) AS province_daily "
+        "GROUP BY date"
+    )
+    return (
+        "district_daily AS (" + district_daily + "), "
+        "city_daily AS (" + city_daily + "), "
+        "province_daily AS (" + province_daily + "), "
+        "national_daily AS (" + national_daily + ")"
+    )
+
+
+def _query_national_weather_summary(cursor: Any, selected_date: str) -> dict[str, Any] | None:
+    date_clause = (
+        "date = %s AND date IS NOT NULL AND TRIM(date) <> '' "
+        "AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+    )
+    ctes = _national_weather_ctes(date_clause)
+    sql = (
+        f"WITH {ctes} "
+        "SELECT MAX(national_daily.date) AS date, "
+        "(SELECT COUNT(*) FROM district_daily) AS record_count, "
+        "(SELECT COUNT(*) FROM city_daily) AS city_count, "
+        "(SELECT COUNT(*) FROM district_daily) AS district_count, "
+        "MAX(national_daily.max_temp) AS max_temp, "
+        "MIN(national_daily.min_temp) AS min_temp, "
+        "AVG(national_daily.avg_wind) AS avg_wind, "
+        "MAX(national_daily.max_wind) AS max_wind, "
+        "AVG(national_daily.total_precip) AS total_precip, "
+        "'全国多种天气' AS weather "
+        "FROM national_daily"
+    )
+    cursor.execute(sql, [selected_date])
+    row = cursor.fetchone()
+    return row if row and int(row.get("record_count") or 0) else None
+
+
+def get_national_weather_overview(date: str | None = None) -> dict[str, Any] | None:
+    """Return the real hierarchy-aware national weather value for one date."""
+
+    valid_date = "date IS NOT NULL AND TRIM(date) <> '' AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'"
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            if date is None:
+                cursor.execute(
+                    "SELECT DATE_FORMAT(MAX(STR_TO_DATE(date, '%%Y-%%m-%%d')), '%%Y-%%m-%%d') AS selected_date "
+                    f"FROM weather_data WHERE {valid_date}"
+                )
+                selected_date = (cursor.fetchone() or {}).get("selected_date")
+                if selected_date is None:
+                    return None
+            else:
+                selected_date = date
+            return _query_national_weather_summary(cursor, str(selected_date))
+
+
+def get_national_weather_trend(
+    *, end_date: str | None = None, days: int = _DEFAULT_HISTORY_LIMIT
+) -> list[dict[str, Any]]:
+    """Return the latest national hierarchy-aware daily weather values."""
+
+    _validate_history_limit(days)
+    clauses = [
+        "date IS NOT NULL",
+        "TRIM(date) <> ''",
+        "date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'",
+    ]
+    params: list[Any] = []
+    if end_date is not None:
+        clauses.append("STR_TO_DATE(date, '%%Y-%%m-%%d') <= STR_TO_DATE(%s, '%%Y-%%m-%%d')")
+        params.append(end_date)
+    ctes = _national_weather_ctes(" AND ".join(clauses))
+    sql = (
+        f"WITH {ctes} "
+        "SELECT date, COUNT(*) AS record_count, MAX(max_temp) AS max_temp, "
+        "MIN(min_temp) AS min_temp, AVG(avg_wind) AS avg_wind, "
+        "MAX(max_wind) AS max_wind, AVG(total_precip) AS total_precip, "
+        "'全国多种天气' AS weather "
+        "FROM national_daily GROUP BY date "
+        "ORDER BY STR_TO_DATE(date, '%%Y-%%m-%%d') DESC LIMIT %s"
+    )
+    params.append(days)
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            return list(cursor.fetchall())
+
+
+def get_national_weather_dates(limit: int = _MAX_DATE_LIMIT) -> list[dict[str, Any]]:
+    """Return actual valid observation dates across all weather records."""
+
+    _validate_date_limit(limit)
+    sql = (
+        "SELECT DISTINCT date FROM weather_data "
+        "WHERE date IS NOT NULL AND TRIM(date) <> '' "
+        "AND date REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' "
+        "ORDER BY STR_TO_DATE(date, '%%Y-%%m-%%d') DESC LIMIT %s"
+    )
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(sql, [limit])
+            return list(cursor.fetchall())
+
+
 def _query_province_weather_summary(
     cursor: Any,
     province_clause: str,

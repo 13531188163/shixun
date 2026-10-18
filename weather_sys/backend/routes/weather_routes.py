@@ -39,6 +39,14 @@ def province_weather_dates():
     return success_response(data=data, meta={"count": len(data), "scope": "province"})
 
 
+@weather_bp.get("/national-dates")
+def national_weather_dates():
+    """List real observation dates available across the national source."""
+
+    data = weather_service.list_national_weather_dates()
+    return success_response(data=data, meta={"count": len(data), "scope": "country"})
+
+
 @weather_bp.get("/trend")
 def weather_trend():
     location = weather_location_params()
@@ -66,6 +74,14 @@ def province_weather_trend():
     ) is None:
         return error_response("province location not found", http_status=404)
     return success_response(data=data, meta={"days": days, "scope": "province"})
+
+
+@weather_bp.get("/national-trend")
+def national_weather_trend():
+    selected_date = date_param()
+    days = integer_param("days", default=7, minimum=1, maximum=90)
+    data = weather_service.get_national_weather_trend(end_date=selected_date, days=days)
+    return success_response(data=data, meta={"days": days, "scope": "country"})
 
 
 @weather_bp.get("/city-comparison")

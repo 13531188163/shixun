@@ -62,6 +62,39 @@ class DashboardServiceTests(unittest.TestCase):
         self.assertIsNone(dashboard_service.get_dashboard_overview(city="不存在"))
         latest_weather.assert_called_once()
 
+    @patch("weather_sys.backend.services.dashboard_service.get_air_quality_overview")
+    @patch("weather_sys.backend.services.dashboard_service.air_quality_model.get_air_quality_statistics")
+    @patch("weather_sys.backend.services.dashboard_service.weather_model.get_weather_statistics")
+    @patch("weather_sys.backend.services.dashboard_service.get_national_weather_overview")
+    def test_national_overview_keeps_country_scope(
+        self,
+        national_weather,
+        weather_statistics,
+        air_quality_statistics,
+        air_quality_overview,
+    ) -> None:
+        national_weather.return_value = {
+            "scope": "country",
+            "date": "2026-05-22",
+            "weather": "全国多种天气",
+            "maxTemp": 22,
+            "minTemp": 8,
+            "avgWind": 2.1,
+            "maxWind": 12,
+            "precipitation": 1.2,
+            "recordCount": 100,
+        }
+        weather_statistics.return_value = {"record_count": 1000, "latest_date": date(2026, 5, 22)}
+        air_quality_statistics.return_value = {"record_count": 262, "latest_snapshot": None}
+        air_quality_overview.return_value = {"cityCount": 262, "averageAqi": 72}
+
+        result = dashboard_service.get_national_dashboard_overview(date="2026-05-22")
+
+        self.assertEqual(result["location"]["scope"], "country")
+        self.assertIsNone(result["latestAirQuality"])
+        self.assertEqual(result["airQualitySummary"]["cityCount"], 262)
+        national_weather.assert_called_once_with(date="2026-05-22")
+
 
 if __name__ == "__main__":
     unittest.main()

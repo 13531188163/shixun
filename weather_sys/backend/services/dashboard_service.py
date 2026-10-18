@@ -12,8 +12,8 @@ from typing import Any
 
 from ..models import air_quality_model, weather_model
 from ..utils.data_converter import format_date
-from .air_quality_service import get_latest_air_quality, get_province_air_quality_summary
-from .weather_service import get_latest_weather, get_province_weather_overview
+from .air_quality_service import get_air_quality_overview, get_latest_air_quality, get_province_air_quality_summary
+from .weather_service import get_latest_weather, get_national_weather_overview, get_province_weather_overview
 
 
 def _format_timestamp(value: Any) -> str | None:
@@ -109,6 +109,36 @@ def get_province_dashboard_overview(
         "latestWeather": latest_weather,
         "latestAirQuality": None,
         "airQualitySummary": get_province_air_quality_summary(province),
+        "basicStatistics": {
+            "weatherRecordCount": int(_stat_value(weather_stats, "record_count", 0) or 0),
+            "airQualityRecordCount": int(_stat_value(air_quality_stats, "record_count", 0) or 0),
+            "weatherLatestDate": format_date(_stat_value(weather_stats, "latest_date")),
+            "airQualitySnapshotAt": _format_timestamp(
+                _stat_value(air_quality_stats, "latest_snapshot")
+            ),
+        },
+    }
+
+
+def get_national_dashboard_overview(*, date: str | None = None) -> dict[str, Any] | None:
+    """Return the national dashboard payload using the real weather hierarchy."""
+
+    latest_weather = get_national_weather_overview(date=date)
+    if latest_weather is None:
+        return None
+
+    weather_stats = weather_model.get_weather_statistics()
+    air_quality_stats = air_quality_model.get_air_quality_statistics()
+    return {
+        "location": {
+            "province": None,
+            "city": None,
+            "district": None,
+            "scope": "country",
+        },
+        "latestWeather": latest_weather,
+        "latestAirQuality": None,
+        "airQualitySummary": get_air_quality_overview(),
         "basicStatistics": {
             "weatherRecordCount": int(_stat_value(weather_stats, "record_count", 0) or 0),
             "airQualityRecordCount": int(_stat_value(air_quality_stats, "record_count", 0) or 0),
