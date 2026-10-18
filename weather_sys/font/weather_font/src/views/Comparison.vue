@@ -427,8 +427,8 @@ onMounted(async () => {
 .radar-fallback-table { width: 100%; border-collapse: collapse; color: var(--text-secondary); font-size: 10px; }
 .radar-fallback-table th, .radar-fallback-table td { padding: 5px 6px; text-align: center; border: 1px solid rgb(45 126 177 / 34%); }
 .radar-fallback-table th { color: #cdeeff; background: rgb(8 58 106 / 70%); }
-.bottom-grid { display: grid; min-width: 0; align-items: start; grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr); gap: 10px; }
-.bottom-grid :deep(.dashboard-panel) { min-height: 0; align-self: start; }
+.bottom-grid { display: grid; min-width: 0; align-items: stretch; grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.9fr); gap: 10px; }
+.bottom-grid :deep(.dashboard-panel) { min-height: 0; }
 .compare-table-wrap { overflow-x: auto; }
 .compare-table-wrap table { width: 100%; min-width: 720px; border-collapse: collapse; color: var(--text-secondary); font-size: 10px; }
 .compare-table-wrap th, .compare-table-wrap td { padding: 6px 6px; text-align: center; border: 1px solid rgb(45 126 177 / 40%); white-space: nowrap; }
