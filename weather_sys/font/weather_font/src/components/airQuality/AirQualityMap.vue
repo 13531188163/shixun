@@ -4,11 +4,12 @@ import * as echarts from 'echarts'
 import ChartState from '../dashboard/ChartState.vue'
 import { useEChart } from '../../utils/chart'
 import { CHART_COLORS, DARK_TOOLTIP } from '../../utils/chartTheme'
+import { comparableRegionName } from '../../utils/dashboardRegion'
 
 const props = defineProps({ data: { type: Array, default: () => [] }, loading: Boolean, error: { type: String, default: '' }, selectedProvince: { type: String, default: '' } })
 const emit = defineEmits(['province-select'])
 const element = ref(null); const mapReady = ref(false); const mapError = ref(''); const mapNameByKey = ref(new Map())
-const compact = (v) => String(v || '').replace(/特别行政区|自治区|省|市$/u, '')
+const compact = (v) => comparableRegionName(v)
 const mapNameFor = (name) => mapNameByKey.value.get(compact(name)) || name
 const color = (aqi) => { const n = Number(aqi); if (!Number.isFinite(n)) return '#10385f'; if (n <= 50) return '#35d99b'; if (n <= 100) return '#f3d34a'; if (n <= 150) return '#ff9e43'; if (n <= 200) return '#f05d68'; if (n <= 300) return '#b55dde'; return '#7d284e' }
 const rowFor = (name) => props.data.find((row) => compact(row.province) === compact(name))
