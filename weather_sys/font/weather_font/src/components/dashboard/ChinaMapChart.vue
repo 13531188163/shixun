@@ -57,12 +57,15 @@ const currentLevel = computed(() => mapRegion.district ? 'district' : (currentNo
 const selectedFeature = computed(() => mapRegion.district ? businessFeature() : null)
 const mapFit = computed(() => {
   const wholeMapFit = fitGeoBounds(geoJsonBounds(currentMap.value?.geoJson), mapViewport.value)
-  if (!selectedFeature.value) return wholeMapFit
+  if (!selectedFeature.value) {
+    return { ...wholeMapFit, layoutSize: Math.min(220, Math.max(wholeMapFit.layoutSize * 1.24, 100)) }
+  }
   const districtBounds = geoJsonBounds({ type: 'FeatureCollection', features: [selectedFeature.value] })
   const focusFit = fitGeoBounds(districtBounds, mapViewport.value, 0.78)
   const padded = expandGeoBounds(districtBounds, 0.35)
   return {
     ...focusFit,
+    layoutSize: Math.min(220, Math.max(focusFit.layoutSize * 1.12, 100)),
     boundingCoords: padded ? [[padded.minX, padded.maxY], [padded.maxX, padded.minY]] : wholeMapFit.boundingCoords,
   }
 })
