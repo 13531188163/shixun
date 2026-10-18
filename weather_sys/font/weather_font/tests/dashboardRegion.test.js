@@ -14,6 +14,9 @@ test('resolves map administrative suffixes to selector options', () => {
   assert.equal(resolveRegionOption(['阿坝'], '阿坝藏族羌族自治州'), '阿坝')
   assert.equal(resolveRegionOption(['白玉县'], '白玉县'), '白玉县')
   assert.equal(comparableRegionName('内蒙古自治区'), '内蒙古')
+  assert.equal(resolveRegionOption(['新疆', '青海'], '新疆维吾尔自治区'), '新疆')
+  assert.equal(resolveRegionOption(['宁夏', '甘肃'], '宁夏回族自治区'), '宁夏')
+  assert.equal(resolveRegionOption(['广西'], '广西壮族自治区'), '广西')
 })
 
 test('keeps country, province, city and district scopes explicit', () => {
