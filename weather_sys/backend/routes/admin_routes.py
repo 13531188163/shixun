@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+import hmac
+import os
 from pathlib import Path
 
 import yaml
-from flask import Blueprint, current_app, jsonify, render_template
+from flask import Blueprint, current_app, jsonify, render_template, request
 
 from ..services.admin_service import get_admin_summary
 from ..utils.db import ping_database
@@ -15,6 +17,20 @@ from ..utils.db import ping_database
 LOGGER = logging.getLogger(__name__)
 admin_bp = Blueprint("admin", __name__)
 OPENAPI_PATH = Path(__file__).resolve().parents[3] / "docs" / "openapi.yaml"
+
+
+@admin_bp.before_request
+def admin_access_control():
+    """Protect the workbench when an ADMIN_API_TOKEN is configured.
+
+    Development remains convenient when the variable is unset; deployment
+    environments can require the X-Admin-Token header without changing routes.
+    """
+
+    expected = os.getenv("ADMIN_API_TOKEN", "").strip()
+    if expected and not hmac.compare_digest(request.headers.get("X-Admin-Token", ""), expected):
+        return jsonify({"code": 401, "message": "admin authentication required", "data": None}), 401
+    return None
 
 
 @admin_bp.get("/")
