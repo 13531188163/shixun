@@ -677,7 +677,43 @@ paths:
         '200': {description: Beaufort level distribution}
         '400': {$ref: '#/components/responses/BadRequest'}
         '500': {$ref: '#/components/responses/ServerError'}
+  /api/admin/weather-records:
+    get:
+      tags: [Admin Read Only]
+      summary: Page historical weather records for the admin console
+      description: Read-only, server-side paginated weather_data rows. When ADMIN_API_TOKEN is configured, send X-Admin-Token.
+      operationId: getAdminWeatherRecords
+      security:
+        - AdminToken: []
+      parameters:
+        - $ref: '#/components/parameters/ProvinceOptional'
+        - $ref: '#/components/parameters/CityOptional'
+        - $ref: '#/components/parameters/DistrictOptional'
+        - $ref: '#/components/parameters/DateOptional'
+        - name: keyword
+          in: query
+          required: false
+          description: Optional location or weather text search.
+          schema: {type: string, minLength: 1, maxLength: 50}
+        - name: page
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, default: 1}
+        - name: pageSize
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+      responses:
+        '200': {$ref: '#/components/responses/SuccessResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/ServerError'}
 components:
+  securitySchemes:
+    AdminToken:
+      type: apiKey
+      in: header
+      name: X-Admin-Token
+      description: Optional deployment token configured by ADMIN_API_TOKEN.
   parameters:
     ProvinceRequired:
       name: province

@@ -25,7 +25,13 @@ class OpenApiContractTests(unittest.TestCase):
         self.assertEqual(swagger.status_code, 200)
         self.assertIn(b"swagger-ui", swagger.data)
         self.assertEqual(admin.status_code, 200)
-        self.assertIn(b"WeatherDemo API", admin.data)
+        # A production frontend build is served at /admin; a small status page
+        # remains only as a pre-build fallback.
+        self.assertTrue(
+            b'id="app"' in admin.data
+            or "后端管理台".encode() in admin.data
+            or b"WeatherDemo API" in admin.data
+        )
         response = self.client.get("/openapi.json")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()["openapi"], "3.0.3")
@@ -33,7 +39,9 @@ class OpenApiContractTests(unittest.TestCase):
     def test_every_api_route_is_documented(self):
         actual = set()
         for rule in self.app.url_map.iter_rules():
-            if rule.endpoint.startswith(("static", "admin.", "frontend_")):
+            if rule.endpoint.startswith(("static", "frontend_")):
+                continue
+            if rule.endpoint.startswith("admin.") and not rule.rule.startswith("/api/admin/"):
                 continue
             if "<" in rule.rule or not rule.rule.startswith("/api/"):
                 continue

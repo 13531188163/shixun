@@ -33,5 +33,6 @@ def get_admin_summary() -> dict[str, list[dict[str, str]]]:
             {"path": "/api/weather/*", "description": "历史天气查询"},
             {"path": "/api/air-quality/*", "description": "AQI 快照与统计"},
             {"path": "/api/dashboard/overview", "description": "Dashboard 聚合数据"},
+            {"path": "/api/admin/weather-records", "description": "受保护的天气记录分页"},
         ],
     }

@@ -8,15 +8,19 @@ import os
 from pathlib import Path
 
 import yaml
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request, send_from_directory
 
 from ..services.admin_service import get_admin_summary
+from ..services import weather_service
+from ..utils.query_params import date_param, integer_param, name_param
 from ..utils.db import ping_database
+from ..utils.response import error_response, success_response
 
 
 LOGGER = logging.getLogger(__name__)
 admin_bp = Blueprint("admin", __name__)
 OPENAPI_PATH = Path(__file__).resolve().parents[3] / "docs" / "openapi.yaml"
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / "font" / "weather_font" / "dist"
 
 
 @admin_bp.before_request
@@ -56,9 +60,41 @@ def admin_page():
 
 @admin_bp.get("/admin")
 def admin_workbench_page():
-    """Serve the compact API workbench for the real Flask API."""
+    """Serve the Vue read-only administration console when it is built.
 
-    return render_template("api_workbench.html")
+    A small server-rendered status page remains as a pre-build fallback so the
+    Flask service can still start before the frontend bundle is built.
+    """
+
+    if (FRONTEND_DIST / "index.html").is_file():
+        return send_from_directory(FRONTEND_DIST, "index.html")
+    return render_template(
+        "admin.html",
+        database_name=current_app.config.get("DB_NAME", "weather_db"),
+        database_ok=None,
+        summary=get_admin_summary(),
+        frontend_dev_url="http://127.0.0.1:5173/admin",
+        frontend_build_url="/admin",
+    )
+
+
+@admin_bp.get("/api/admin/weather-records")
+def admin_weather_records():
+    """Return server-paginated weather rows for the protected admin console."""
+
+    try:
+        result = weather_service.list_weather_records(
+            province=name_param("province"),
+            city=name_param("city"),
+            district=name_param("district"),
+            date=date_param(),
+            keyword=name_param("keyword"),
+            page=integer_param("page", default=1, minimum=1, maximum=100000),
+            page_size=integer_param("pageSize", default=50, minimum=1, maximum=100),
+        )
+    except ValueError as exc:
+        return error_response(str(exc), http_status=400)
+    return success_response(data=result)
 
 
 @admin_bp.get("/api/docs")

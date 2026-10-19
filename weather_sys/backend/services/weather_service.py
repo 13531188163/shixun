@@ -168,6 +168,41 @@ def list_weather_dates(
     return [formatted for row in rows if (formatted := format_date(row.get("date"))) is not None]
 
 
+def list_weather_records(
+    *,
+    province: str | None = None,
+    city: str | None = None,
+    district: str | None = None,
+    date: str | None = None,
+    keyword: str | None = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> dict[str, Any]:
+    """Return a server-paginated, source-backed weather record listing."""
+
+    province_value = _location_name(province, field="province")
+    city_value = _location_name(city, field="city")
+    district_value = _location_name(district, field="district")
+    selected_date = _validate_observation_date(date) if date else None
+    keyword_value = _location_name(keyword, field="keyword") if keyword else None
+    rows, total = weather_model.get_weather_page(
+        province=province_value,
+        city=city_value,
+        district=district_value,
+        date=selected_date,
+        keyword=keyword_value,
+        page=page,
+        page_size=page_size,
+    )
+    return {
+        "rows": [_weather_payload(row, include_created_at=True) for row in rows],
+        "page": page,
+        "pageSize": page_size,
+        "total": total,
+        "pages": (total + page_size - 1) // page_size if total else 0,
+    }
+
+
 def get_province_weather_overview(
     *, province: str, date: str | None = None
 ) -> dict[str, Any] | None:

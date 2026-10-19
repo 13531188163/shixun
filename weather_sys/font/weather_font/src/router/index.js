@@ -6,6 +6,7 @@ import Rainfall from '../views/Rainfall.vue'
 import Wind from '../views/Wind.vue'
 import AirQuality from '../views/AirQuality.vue'
 import Comparison from '../views/Comparison.vue'
+import Admin from '../views/Admin.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -44,6 +45,11 @@ const router = createRouter({
       path: '/comparison',
       name: 'comparison',
       component: Comparison,
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: Admin,
     },
   ],
 })

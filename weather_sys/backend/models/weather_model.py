@@ -684,6 +684,52 @@ def get_weather_statistics(
             return cursor.fetchone() or {"record_count": 0, "latest_date": None}
 
 
+def get_weather_page(
+    *,
+    province: str | None = None,
+    city: str | None = None,
+    district: str | None = None,
+    date: str | None = None,
+    keyword: str | None = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> tuple[list[dict[str, Any]], int]:
+    """Return a bounded read-only page for the admin weather table.
+
+    Both the count and row query use the same parameterized predicates.  The
+    admin UI never receives an unbounded ``SELECT *`` or performs pagination in
+    the browser.
+    """
+
+    if not isinstance(page, int) or page < 1:
+        raise ValueError("page must be a positive integer")
+    if not isinstance(page_size, int) or not 1 <= page_size <= 100:
+        raise ValueError("pageSize must be between 1 and 100")
+    clauses, params = _location_filters(province=province, city=city, district=district)
+    if date:
+        clauses.append("date = %s")
+        params.append(date)
+    if keyword:
+        text = str(keyword).strip()
+        if text:
+            clauses.append("(province LIKE %s OR city LIKE %s OR district LIKE %s OR weather LIKE %s)")
+            pattern = f"%{text}%"
+            params.extend([pattern, pattern, pattern, pattern])
+    where_sql = " AND ".join(clauses) if clauses else "1 = 1"
+    offset = (page - 1) * page_size
+    count_sql = f"SELECT COUNT(*) AS total FROM weather_data WHERE {where_sql}"
+    rows_sql = (
+        f"SELECT {_WEATHER_SELECT} FROM weather_data WHERE {where_sql} "
+        "ORDER BY date DESC, id DESC LIMIT %s OFFSET %s"
+    )
+    with connection_scope() as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(count_sql, params)
+            total = int((cursor.fetchone() or {}).get("total") or 0)
+            cursor.execute(rows_sql, [*params, page_size, offset])
+            return list(cursor.fetchall()), total
+
+
 def _validate_location_limit(limit: int) -> None:
     if isinstance(limit, bool) or not isinstance(limit, int):
         raise ValueError("limit must be an integer")

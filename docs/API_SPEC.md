@@ -924,3 +924,22 @@ message 可读但不得泄漏 SQL、密码或连接串。
 - 返回 `weatherPeriod`、`comparableDates`、`dataCoverage`、`radarBaseline`、`cities`；每个城市包含 `weatherMetrics`、`monthlyPrecip` 和 `aqiSnapshot`。`radarBaseline` 是同一共同可比日期内所有有效天气城市样本的真实最小/最大范围，供前端显示相对量级，不是人为设定的评分边界。
 - `avgTempEstimate` 是最高温和最低温的中间值估算；`totalPrecip` 是共同日期内城市区域日均降水累计值；AQI 的 `createdAt` 是快照入库时间，不代表实际观测时间。
 - 缺失天气指标或 AQI 使用 null，前端显示“暂无数据”；不生成月份、日期或 AQI 模拟值。
+
+## 11. 后台只读管理接口
+
+### 11.1 天气记录分页
+
+- 接口名称：后台天气记录分页
+- Method：GET
+- URL：/api/admin/weather-records
+- 访问控制：当 ADMIN_API_TOKEN 配置时，必须携带 X-Admin-Token。
+- Query 参数：province、city、district、date、keyword、page、pageSize，均可选。
+- 参数约束：date 使用 YYYY-MM-DD；keyword 长度 1-50；page 从 1 开始；pageSize 为 1-100，默认 50。
+- 数据来源表：weather_data。
+- 数据计算方式：按位置、观测日和关键词过滤，在数据库中先 COUNT，再使用 LIMIT/OFFSET 返回指定页；排序为 date DESC、id DESC。字段由既有 weather service 转换为 camelCase。
+- 成功数据结构：{"rows": [...], "page": number, "pageSize": number, "total": number, "pages": number}。
+- HTTP Status：200、400、500。
+- 数据可用状态：available。
+- 前端对应模块：天气数据管理。
+
+后台控制台的数据库管理和系统监控页面只复用现有健康、覆盖日期和 Dashboard 统计接口。当前没有请求级监控采集时，相关指标显示“暂无监控数据”；不提供任意 SQL 执行入口。
