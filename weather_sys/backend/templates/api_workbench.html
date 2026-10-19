@@ -156,6 +156,13 @@
     $('exampleButton').addEventListener('click', fillExample);
     $('queryForm').querySelectorAll('select[data-location]').forEach((select) => select.addEventListener('change', () => updateLocationFields(select.dataset.location)));
     updateLocationFields();
+    // Business modules are data-first: load a valid default request as soon
+    // as the operation is selected. The API debug controls remain available
+    // for users who want to edit and resend the request manually.
+    Promise.resolve().then(async () => {
+      await fillExample();
+      if (state.operation === operation) $('queryForm').requestSubmit();
+    });
   }
 
   function parameterField(rawParameter) {
@@ -168,7 +175,7 @@
     else if (name === 'province' || name === 'city' || name === 'district') control = `<select name="${escapeHtml(name)}" data-location="${name}"><option value="">${parameter.required ? '请选择' : '全部'}</option></select>`;
     else if (schema.format === 'date') control = `<input name="${escapeHtml(name)}" type="date">`;
     else control = `<input name="${escapeHtml(name)}" type="${schema.type === 'integer' || schema.type === 'number' ? 'number' : 'text'}"${schema.type === 'integer' ? ' step="1"' : ''} placeholder="${escapeHtml(parameter.description || '')}">`;
-    const defaultValue = schema.default ?? '';
+    const defaultValue = schema.default ?? parameter.example ?? schema.example ?? '';
     if (defaultValue && control.includes('type="')) control = control.replace('>', ` value="${escapeHtml(defaultValue)}">`);
     return `<div class="field"><label>${escapeHtml(parameterLabels[name] || parameter.description || name)} ${required}<span class="hint">(${escapeHtml(name)}) · ${escapeHtml(schema.type || 'string')}${schema.format ? ` · ${escapeHtml(schema.format)}` : ''}</span></label>${control}<div class="field-error" data-error-for="${escapeHtml(name)}"></div></div>`;
   }
