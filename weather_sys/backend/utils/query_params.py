@@ -19,9 +19,12 @@ def _single_value(name: str) -> str | None:
 
 def name_param(name: str, required: bool = False) -> str | None:
     value = _single_value(name)
-    if required and not value:
-        raise AppException(f"{name} is required")
-    if value is None:
+    # Optional text filters use an empty field as "not supplied".  This keeps
+    # browser forms that submit an empty input compatible with omitted query
+    # parameters while preserving required-parameter validation.
+    if not value:
+        if required:
+            raise AppException(f"{name} is required")
         return None
     if not 1 <= len(value) <= 50:
         raise AppException(f"{name} must be between 1 and 50 characters")

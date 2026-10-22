@@ -183,7 +183,7 @@ async function loadBusiness(serial) {
   if (active.value === 'weather') {
     const response = await api('/admin/weather-records', {
       ...params,
-      keyword: filters.keyword,
+      ...cleanParams({ keyword: filters.keyword }),
       page: pagination.page,
       pageSize: pagination.pageSize,
     })
