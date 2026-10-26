@@ -22,8 +22,6 @@ const menu = [
   ['rainfall', '降水管理'],
   ['wind', '风力管理'],
   ['air', '空气质量管理'],
-  ['database', '数据库管理'],
-  ['monitor', '系统监控'],
 ]
 
 const active = ref('console')
@@ -46,7 +44,7 @@ const title = computed(() => menu.find(([key]) => key === active.value)?.[1] || 
 const columnLabels = {
   id: '记录ID', province: '省份', city: '城市', district: '区县', date: '观测日期', weather: '天气',
   maxTemp: '最高温度', minTemp: '最低温度', avgWind: '平均风速', maxWind: '最大风速', precipitation: '降水量',
-  createdAt: '入库时间', table: '数据表', status: '状态', records: '记录/样本', coverage: '覆盖信息', metric: '监控指标', value: '当前值',
+  createdAt: '入库时间', aqi: 'AQI', rank: '排名', status: '状态',
 }
 const api = (path, params = {}) => request.get(path, { params })
 const cleanParams = (params) => Object.fromEntries(
@@ -146,16 +144,14 @@ function dateParams() {
 
 async function loadConsole(serial) {
   const results = await Promise.allSettled([
-    api('/health'),
     api('/weather/national-dates'),
     api('/air-quality/overview'),
     api('/dashboard/national-overview'),
     api('/weather/national-trend', { days: 30 }),
   ])
   if (serial !== requestSerial) return
-  const [health, dates, aqi, overview, trend] = results
+  const [dates, aqi, overview, trend] = results
   consoleData.value = {
-    health: health.status === 'fulfilled' ? health.value.data : null,
     dates: dates.status === 'fulfilled' ? dates.value.data : [],
     aqi: aqi.status === 'fulfilled' ? aqi.value.data : null,
     overview: overview.status === 'fulfilled' ? overview.value.data : null,
@@ -165,7 +161,7 @@ async function loadConsole(serial) {
     { label: '天气有效观测日', value: consoleData.value.dates.length, unit: '天' },
     { label: '天气记录数', value: consoleData.value.overview?.basicStatistics?.weatherRecordCount, unit: '条' },
     { label: 'AQI城市样本', value: consoleData.value.aqi?.cityCount, unit: '个' },
-    { label: '数据库连接', value: consoleData.value.health?.database || '未连接', unit: '' },
+    { label: '最新观测日', value: consoleData.value.dates[0] || '--', unit: '' },
   ]
   page.chart = Array.isArray(consoleData.value.trend) ? consoleData.value.trend : []
   page.note = '控制台只展示数据库真实统计；未采集的运行指标不会被补造。'
@@ -192,7 +188,7 @@ async function loadBusiness(serial) {
     chartRows = rows.map((row) => ({ date: row.date, maxTemp: row.maxTemp, minTemp: row.minTemp }))
     pagination.total = result.total || 0
     pagination.pages = result.pages || 0
-    note = '天气记录表使用后台受保护的服务端分页接口；筛选条件和日期均来自真实 weather_data。'
+    note = '天气记录来自真实 weather_data，可按地区、观测日期和关键词筛选。'
   } else if (active.value === 'temperature') {
     const [average, extremes, trend] = await Promise.all([
       api('/temperature/average', params),
@@ -207,7 +203,7 @@ async function loadBusiness(serial) {
     ]
     rows = trend.data || []
     chartRows = rows
-    note = '温度指标沿用温度分析服务的真实聚合口径。'
+    note = '温度指标来自真实天气记录的聚合结果。'
   } else if (active.value === 'rainfall') {
     const [core, trend] = await Promise.all([
       api('/rainfall/core', params),
@@ -221,7 +217,7 @@ async function loadBusiness(serial) {
     ]
     rows = trend.data || []
     chartRows = rows
-    note = '降水使用区域日均聚合结果，不把站点或区县降水量直接相加。'
+    note = '降水量按区域观测记录计算，展示累计、日均和最大值。'
   } else if (active.value === 'wind') {
     const [core, trend] = await Promise.all([
       api('/wind/core', params),
@@ -234,7 +230,7 @@ async function loadBusiness(serial) {
     ]
     rows = trend.data || []
     chartRows = rows
-    note = '风速来自现有 weather_data 风速字段；wind_data 不是当前正式数据源。'
+    note = '风速来自真实 weather_data 风速字段。'
   } else if (active.value === 'air') {
     const [overview, ranking, levels] = await Promise.all([
       api('/air-quality/overview', { province: filters.province || undefined }),
@@ -249,30 +245,7 @@ async function loadBusiness(serial) {
     ]
     rows = ranking.data || []
     chartRows = levels.data || []
-    note = 'AQI 是固定城市快照，createdAt 表示入库时间，不代表天气历史观测日。'
-  } else if (active.value === 'database') {
-    const [health, dates, aqi, overview] = await Promise.all([
-      api('/health'),
-      api('/weather/national-dates'),
-      api('/air-quality/overview'),
-      api('/dashboard/national-overview'),
-    ])
-    rows = [
-      { table: 'weather_data', status: health.data?.database === 'ok' ? '可查询' : '数据库异常', records: overview.data?.basicStatistics?.weatherRecordCount ?? '--', coverage: `${dates.data?.[dates.data.length - 1] || '--'}（最新可用日）` },
-      { table: 'air_quality_data', status: aqi.data ? '可查询' : '暂无快照', records: aqi.data?.cityCount === undefined ? '--' : `${aqi.data.cityCount} 个有效城市快照`, coverage: aqi.data?.createdAt || '暂无入库时间' },
-      { table: 'wind_data', status: '非正式数据源', records: '--', coverage: '仅使用 weather_data 风速字段' },
-    ]
-    note = '数据库管理仅展示受控只读统计，不开放任意 SQL；字段结构和原始表仍以项目数据字典为准。'
-  } else if (active.value === 'monitor') {
-    const health = await api('/health')
-    rows = [
-      { metric: 'Flask服务', value: '运行中' },
-      { metric: 'MySQL连接', value: health.data?.database || '异常' },
-      { metric: '请求总量', value: '暂无监控数据' },
-      { metric: '成功率', value: '暂无监控数据' },
-      { metric: '平均响应时间', value: '暂无监控数据' },
-    ]
-    note = '当前项目未采集请求级监控指标，页面明确显示暂无监控数据。'
+    note = 'AQI 来自城市空气质量快照，入库时间不代表天气历史观测日。'
   }
 
   if (serial !== requestSerial) return
@@ -335,6 +308,7 @@ async function changeWeatherPage(targetPage) {
 function displayValue(value) {
   if (value === null || value === undefined || value === '') return '--'
   if (typeof value === 'number' && !Number.isFinite(value)) return '--'
+  if (typeof value === 'number') return Number(value.toFixed(2))
   return typeof value === 'object' ? JSON.stringify(value) : value
 }
 
@@ -349,14 +323,49 @@ async function renderChart() {
   const data = page.chart
   const keys = Object.keys(data[0] || {}).filter((key) => key !== 'date' && key !== 'month' && data.some((row) => Number.isFinite(Number(row[key]))))
   const category = data.map((row) => row.date || row.month || row.status || '')
+  const labelInterval = category.length > 16 ? Math.ceil(category.length / 12) - 1 : 0
   chart.setOption({
     color: ['#52d8ff', '#ffc466', '#56e39f', '#f47d9b'],
-    tooltip: { trigger: 'axis' },
-    legend: { data: keys, textStyle: { color: '#a7c3d9' } },
-    grid: { left: 42, right: 24, top: 38, bottom: 34 },
-    xAxis: { type: 'category', data: category, axisLabel: { color: '#a7c3d9' } },
-    yAxis: { type: 'value', axisLabel: { color: '#a7c3d9' }, splitLine: { lineStyle: { color: '#193b5c' } } },
-    series: keys.map((key) => ({ name: key, type: 'line', smooth: true, connectNulls: false, data: data.map((row) => row[key]) })),
+    tooltip: {
+      trigger: 'axis',
+      confine: true,
+      backgroundColor: 'rgba(7, 20, 40, 0.96)',
+      borderColor: '#3d83ad',
+      textStyle: { color: '#eaf6ff' },
+      valueFormatter: (value) => {
+        const number = Number(value)
+        return Number.isFinite(number) ? number.toFixed(2) : value
+      },
+    },
+    legend: {
+      data: keys.map(columnLabel),
+      top: 4,
+      left: 16,
+      right: 16,
+      itemWidth: 12,
+      itemHeight: 12,
+      itemGap: 16,
+      textStyle: { color: '#a7c3d9' },
+    },
+    grid: { left: 48, right: 24, top: 42, bottom: category.length > 12 ? 84 : 42, containLabel: true },
+    xAxis: {
+      type: 'category',
+      data: category,
+      axisLabel: {
+        color: '#a7c3d9',
+        hideOverlap: true,
+        interval: labelInterval,
+        margin: 14,
+        rotate: category.length > 12 ? 30 : 0,
+      },
+      axisLine: { lineStyle: { color: '#42627b' } },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#a7c3d9' },
+      splitLine: { lineStyle: { color: '#193b5c' } },
+    },
+    series: keys.map((key) => ({ name: columnLabel(key), type: 'line', smooth: true, showSymbol: true, symbolSize: 7, lineStyle: { width: 2 }, connectNulls: false, data: data.map((row) => row[key]) })),
   })
 }
 
@@ -367,7 +376,7 @@ onMounted(async () => {
     await loadLocations()
     await refresh()
   } catch (reason) {
-    error.value = reason?.message || '后台数据读取失败，请检查 Flask 与数据库连接'
+    error.value = reason?.message || '后台数据读取失败，请检查服务是否正常'
   }
   window.addEventListener('resize', resizeChart)
 })
@@ -382,6 +391,7 @@ onBeforeUnmount(() => {
   <div class="admin-app">
     <aside class="admin-sidebar">
       <div class="admin-brand">WeatherDemo<small>可视化管理系统</small></div>
+      <div class="admin-nav-label">数据分析</div>
       <button v-for="item in menu" :key="item[0]" :class="['admin-menu', { active: active === item[0] }]" @click="selectMenu(item[0])">{{ item[1] }}</button>
       <a class="admin-swagger" href="/api/docs" target="_blank" rel="noreferrer">Swagger 开发文档</a>
     </aside>
@@ -413,7 +423,7 @@ onBeforeUnmount(() => {
 
         <template v-else>
           <div v-if="page.cards.length" class="admin-cards"><article v-for="card in page.cards" :key="card.label"><span>{{ card.label }}</span><strong>{{ displayValue(card.value) }}<small>{{ card.unit }}</small></strong></article></div>
-          <section class="admin-panel"><h2>{{ title }} <small v-if="loading">加载中…</small></h2><el-table class="admin-el-table" :data="page.rows" border stripe height="540" empty-text="暂无真实数据"><el-table-column v-for="key in Object.keys(page.rows[0] || {})" :key="key" :prop="key" :label="columnLabel(key)" min-width="120"><template #default="scope">{{ displayValue(scope.row[key]) }}</template></el-table-column><el-table-column v-if="active === 'weather'" label="操作" width="100" fixed="right"><template #default="scope"><el-button link type="primary" @click="openDetail(scope.row)">查看详情</el-button></template></el-table-column></el-table></section>
+          <section class="admin-panel"><h2>{{ title }} <small v-if="loading">加载中…</small></h2><el-table class="admin-el-table" :data="page.rows" border stripe :max-height="active === 'weather' ? 540 : undefined" empty-text="暂无真实数据"><el-table-column v-for="key in Object.keys(page.rows[0] || {})" :key="key" :prop="key" :label="columnLabel(key)" min-width="120"><template #default="scope">{{ displayValue(scope.row[key]) }}</template></el-table-column><el-table-column v-if="active === 'weather'" label="操作" width="100" fixed="right"><template #default="scope"><el-button link type="primary" @click="openDetail(scope.row)">查看详情</el-button></template></el-table-column></el-table></section>
           <div v-if="active === 'weather' && pagination.total" class="admin-pagination"><span>共 {{ pagination.total }} 条</span><el-pagination background layout="prev, pager, next" :current-page="pagination.page" :page-size="pagination.pageSize" :total="pagination.total" @current-change="changeWeatherPage" /></div>
           <section v-if="page.chart.length" class="admin-panel"><h2>真实数据趋势或分布</h2><div ref="chartElement" class="admin-chart"></div></section>
         </template>
@@ -424,6 +434,606 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.admin-app :deep(.el-select),.admin-app :deep(.el-date-editor),.admin-app :deep(.el-input){width:100%;min-width:150px}.admin-app :deep(.el-select__wrapper),.admin-app :deep(.el-input__wrapper){min-height:36px;background:#071a34;box-shadow:0 0 0 1px #285679 inset}.admin-app :deep(.el-select__selected-item),.admin-app :deep(.el-input__inner){color:#eaf6ff}.admin-app :deep(.el-date-editor .el-input__inner){color:#eaf6ff}.admin-app :deep(.el-button){border-radius:4px}.admin-app :deep(.el-button--primary){--el-button-bg-color:#178bc2;--el-button-border-color:#45c9f2;--el-button-hover-bg-color:#2aa4dc}.admin-app :deep(.el-table){--el-table-bg-color:transparent;--el-table-tr-bg-color:transparent;--el-table-header-bg-color:#12375d;--el-table-row-hover-bg-color:#12365f;--el-table-border-color:#1a4166;--el-table-text-color:#b7d4e7;--el-table-header-text-color:#c5e8f7}.admin-app :deep(.el-table th.el-table__cell){background:#12375d}.admin-app :deep(.el-table__inner-wrapper::before){background:#1a4166}.admin-app :deep(.el-drawer){background:#0a1f3c;color:#eaf6ff}.admin-app :deep(.el-drawer__header){margin-bottom:10px;color:#eaf6ff}.admin-app :deep(.el-pagination){--el-pagination-bg-color:#123c67;--el-pagination-button-bg-color:#123c67;--el-pagination-text-color:#b7d4e9;--el-pagination-button-color:#b7d4e9;--el-pagination-hover-color:#65ddff}.admin-app :deep(.el-pagination button:disabled){background:#0d2745}.admin-app :deep(.el-alert){margin-bottom:15px}\n.admin-app{position:relative;display:flex;width:100%;min-width:0;min-height:100vh;height:100vh;overflow:hidden;color:#eaf6ff;background:radial-gradient(circle at 75% -15%,#173c69 0,#071329 52%,#040b18 100%);font-family:system-ui,"Microsoft YaHei",sans-serif}.admin-sidebar{position:sticky;top:0;display:flex;width:236px;height:100vh;flex:0 0 236px;min-height:0;overflow-y:auto;overflow-x:hidden;flex-direction:column;padding:22px 14px;background:rgba(8,29,58,.95);border-right:1px solid #245681}.admin-brand{padding:0 12px 22px;color:#65ddff;font-size:21px;font-weight:700;letter-spacing:.03em}.admin-brand small{display:block;margin-top:4px;color:#91abc5;font-size:11px;font-weight:400}.admin-menu,.admin-swagger{padding:11px 12px;color:#b7d4e9;text-align:left;text-decoration:none;background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer}.admin-menu:hover,.admin-menu.active{color:#fff;background:linear-gradient(90deg,#123b69,#10305a);border-color:#2c83b5;box-shadow:0 0 18px #1daee833}.admin-swagger{margin-top:auto;color:#65ddff}.admin-main{display:flex;min-width:0;min-height:0;height:100%;flex:1 1 auto;flex-direction:column;overflow:hidden}.admin-top{position:relative;z-index:1;display:flex;flex:0 0 auto;align-items:center;justify-content:space-between;gap:20px;padding:18px 28px;background:#081a35cc;border-bottom:1px solid #245681}.admin-top h1{margin:4px 0 0;font-size:24px}.admin-top span{color:#91abc5;font-size:12px}.admin-top-actions{display:flex;align-items:center;gap:20px}.admin-top-actions a{color:#65ddff}.admin-status{color:#42d99b!important}.admin-content{display:block;width:100%;max-width:none;min-width:0;min-height:0;flex:1 1 auto;margin:0;padding:22px;overflow-x:hidden;overflow-y:auto}.admin-toolbar{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding:14px;background:#0d2242cc;border:1px solid #245681;border-radius:8px}.admin-toolbar label{display:flex;min-width:150px;flex-direction:column;gap:5px;color:#b7d4e9;font-size:12px}.admin-toolbar select,.admin-toolbar input{min-width:150px;padding:8px;color:#eaf6ff;background:#071a34;border:1px solid #285679;border-radius:4px}.admin-toolbar button{padding:9px 16px;color:#03182b;font-weight:700;background:#65ddff;border:0;border-radius:4px;cursor:pointer}.admin-toolbar button:disabled{cursor:wait;opacity:.6}.admin-toolbar .reset{color:#dff8ff;background:#123c67}.admin-error{margin-bottom:15px;padding:11px 14px;color:#ffd1d5;background:#572b3b;border:1px solid #b64e62;border-radius:6px}.admin-error button{margin-left:12px;padding:5px 11px;color:#fff;background:#8c354c;border:0;border-radius:3px}.admin-note{margin:0 0 16px;padding:10px 13px;color:#a7c4d8;background:#0b203b;border-left:3px solid #52d8ff;border-radius:4px}.admin-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.admin-cards article,.admin-panel{padding:16px;background:linear-gradient(145deg,#102c50e8,#0a1d38e8);border:1px solid #245681;border-radius:8px;box-shadow:0 10px 28px #0003}.admin-cards span{color:#91abc5;font-size:13px}.admin-cards strong{display:block;margin-top:8px;color:#65ddff;font-size:25px;line-height:1.25;word-break:break-word}.admin-cards small{margin-left:4px;color:#a7c4d8;font-size:12px;font-weight:400}.admin-panel{margin-bottom:18px;min-width:0}.admin-panel h2{margin:0 0 14px;font-size:17px}.admin-panel h2 small{margin-left:8px;color:#ffbc6b;font-size:11px}.admin-chart{width:100%;height:360px;min-height:220px}.admin-table-wrap{max-height:540px;overflow:auto}table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap}th,td{padding:10px;text-align:left;border-bottom:1px solid #1a4166}th{position:sticky;top:0;color:#c5e8f7;background:#12375d}td{color:#b7d4e7}.admin-pagination{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:-8px 0 18px;color:#91abc5;font-size:12px}.admin-pagination button{padding:6px 12px;color:#dff8ff;background:#123c67;border:1px solid #2c83b5;border-radius:4px;cursor:pointer}.admin-pagination button:disabled{cursor:not-allowed;opacity:.45}.detail-button{padding:4px 8px;color:#bfefff;background:#123c67;border:1px solid #2c83b5;border-radius:3px;cursor:pointer}.detail-drawer{position:fixed;top:0;right:0;z-index:5;width:min(360px,90vw);height:100vh;padding:22px;background:#0a1f3ceF;border-left:1px solid #3a91bd;box-shadow:-12px 0 32px #0008}.detail-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;font-size:17px}.detail-head button{padding:5px 10px;color:#dff8ff;background:#123c67;border:1px solid #2c83b5;border-radius:3px;cursor:pointer}.detail-list{display:grid;grid-template-columns:100px 1fr;gap:0;margin:0}.detail-list dt,.detail-list dd{margin:0;padding:9px 0;border-bottom:1px solid #1a4166}.detail-list dt{color:#91abc5}.detail-list dd{color:#eaf6ff;word-break:break-word}.admin-empty{padding:70px;text-align:center;color:#91abc5}@media(max-width:900px){.admin-sidebar{width:190px;flex-basis:190px}.admin-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-top{align-items:flex-start;flex-direction:column}}@media(max-width:620px){.admin-app{display:block;height:auto;min-height:100vh;overflow:visible}.admin-sidebar{width:auto}.admin-menu{display:inline-block;margin:2px}.admin-swagger{display:inline-block;margin-top:10px}.admin-cards{grid-template-columns:1fr}.admin-content{padding:12px}.admin-top{padding:15px}.admin-toolbar label{min-width:calc(50% - 8px)}.admin-chart{height:280px}}
+.admin-app {
+  --admin-bg: #071329;
+  --admin-surface: rgba(14, 35, 67, 0.88);
+  --admin-surface-strong: #102b50;
+  --admin-line: rgba(83, 170, 224, 0.28);
+  --admin-text: #eaf6ff;
+  --admin-muted: #91abc5;
+  --admin-cyan: #65ddff;
+  --admin-sidebar-width: 248px;
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--admin-sidebar-width) minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  color: var(--admin-text);
+  background:
+    radial-gradient(circle at 88% -18%, rgba(31, 104, 159, 0.42), transparent 36%),
+    linear-gradient(135deg, #071329 0%, #061022 55%, #040b18 100%);
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+}
+
+.admin-sidebar {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px 16px 18px;
+  background: linear-gradient(180deg, rgba(10, 36, 70, 0.98), rgba(6, 22, 45, 0.98));
+  border-right: 1px solid var(--admin-line);
+}
+
+.admin-brand {
+  position: relative;
+  padding: 2px 12px 24px 16px;
+  margin-bottom: 8px;
+  color: var(--admin-cyan);
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.admin-brand::after {
+  position: absolute;
+  right: 12px;
+  bottom: 0;
+  left: 12px;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, var(--admin-cyan), transparent);
+  opacity: 0.45;
+}
+
+.admin-brand small {
+  display: block;
+  margin-top: 6px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.admin-nav-label {
+  width: 100%;
+  padding: 8px 14px 4px;
+  color: #5f8caf;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+}
+
+.admin-menu,
+.admin-swagger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  color: #b7d4e9;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.admin-menu::before {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  content: "";
+  background: #4f7896;
+  border-radius: 50%;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-menu:hover,
+.admin-menu:focus-visible,
+.admin-menu.active {
+  color: #fff;
+  background: linear-gradient(100deg, rgba(31, 112, 178, 0.5), rgba(17, 62, 111, 0.48));
+  border-color: rgba(74, 182, 232, 0.52);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  outline: none;
+  transform: translateX(2px);
+}
+
+.admin-menu:hover::before,
+.admin-menu:focus-visible::before,
+.admin-menu.active::before {
+  background: var(--admin-cyan);
+  box-shadow: 0 0 10px rgba(101, 221, 255, 0.8);
+}
+
+.admin-swagger {
+  margin-top: auto;
+  color: var(--admin-cyan);
+  text-decoration: none;
+}
+
+.admin-swagger:hover,
+.admin-swagger:focus-visible {
+  background: rgba(28, 124, 176, 0.2);
+  outline: none;
+}
+
+.admin-main {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.admin-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 88px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 18px clamp(22px, 3vw, 42px);
+  background: rgba(7, 24, 49, 0.84);
+  border-bottom: 1px solid var(--admin-line);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.admin-top > div:first-child > span {
+  color: var(--admin-muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.admin-top h1 {
+  margin: 4px 0 0;
+  color: #f5fbff;
+  font-size: clamp(22px, 2vw, 28px);
+  line-height: 1.2;
+}
+
+.admin-top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.admin-top-actions a {
+  color: var(--admin-cyan);
+  font-weight: 600;
+}
+
+.admin-status {
+  color: #42d99b !important;
+  white-space: nowrap;
+}
+
+.admin-content {
+  display: block;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 26px clamp(18px, 3vw, 42px) 38px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+}
+
+.admin-toolbar label {
+  display: flex;
+  min-width: 170px;
+  flex: 1 1 170px;
+  flex-direction: column;
+  gap: 6px;
+  color: #b7d4e9;
+  font-size: 12px;
+}
+
+.admin-toolbar label:has(.el-date-editor) {
+  flex-basis: 190px;
+}
+
+.admin-toolbar label:has(.el-input) {
+  flex-basis: 210px;
+}
+
+.admin-toolbar button {
+  min-height: 36px;
+  padding: 0 16px;
+  color: #03182b;
+  font-weight: 700;
+  background: var(--admin-cyan);
+  border: 0;
+  border-radius: 7px;
+}
+
+.admin-toolbar button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.admin-toolbar .reset {
+  color: #dff8ff;
+  background: #123c67;
+}
+
+.admin-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  color: #ffd1d5;
+  background: rgba(87, 43, 59, 0.82);
+  border: 1px solid #b64e62;
+  border-radius: 8px;
+}
+
+.admin-note {
+  margin: 0 0 18px;
+  padding: 11px 14px;
+  color: #a7c4d8;
+  background: rgba(11, 32, 59, 0.72);
+  border: 1px solid rgba(82, 216, 255, 0.18);
+  border-left: 3px solid #52d8ff;
+  border-radius: 8px;
+}
+
+.admin-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.admin-cards article {
+  position: relative;
+  min-width: 0;
+  min-height: 106px;
+  padding: 18px;
+  background: linear-gradient(145deg, rgba(20, 55, 95, 0.9), rgba(9, 28, 56, 0.92));
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.14);
+}
+
+.admin-cards article::before {
+  position: absolute;
+  top: 0;
+  right: 18px;
+  left: 18px;
+  height: 2px;
+  content: "";
+  background: linear-gradient(90deg, var(--admin-cyan), transparent);
+  opacity: 0.7;
+}
+
+.admin-cards span {
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+
+.admin-cards strong {
+  display: block;
+  margin-top: 9px;
+  overflow: hidden;
+  color: var(--admin-cyan);
+  font-size: clamp(24px, 2.2vw, 34px);
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-cards small {
+  margin-left: 5px;
+  color: #a7c4d8;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.admin-panel {
+  min-width: 0;
+  margin-bottom: 20px;
+  padding: 20px;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(18, 45, 81, 0.9), rgba(8, 25, 51, 0.9));
+  border: 1px solid var(--admin-line);
+  border-radius: 12px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.14);
+}
+
+.admin-panel h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 16px;
+  color: #f1f9ff;
+  font-size: 18px;
+}
+
+.admin-panel h2 small {
+  color: #ffbc6b;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.admin-chart {
+  width: 100%;
+  height: clamp(300px, 38vh, 430px);
+  min-height: 260px;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: -4px 0 20px;
+  color: var(--admin-muted);
+  font-size: 12px;
+}
+
+.detail-list {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 0;
+  margin: 0;
+}
+
+.detail-list dt,
+.detail-list dd {
+  min-width: 0;
+  margin: 0;
+  padding: 9px 0;
+  border-bottom: 1px solid #1a4166;
+}
+
+.detail-list dt {
+  color: var(--admin-muted);
+}
+
+.detail-list dd {
+  overflow-wrap: anywhere;
+  color: var(--admin-text);
+}
+
+.admin-empty {
+  padding: 70px;
+  color: var(--admin-muted);
+  text-align: center;
+}
+
+.admin-app :deep(.el-select),
+.admin-app :deep(.el-date-editor),
+.admin-app :deep(.el-input) {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-app :deep(.el-select__wrapper),
+.admin-app :deep(.el-input__wrapper) {
+  min-height: 36px;
+  background: #071a34;
+  box-shadow: 0 0 0 1px #285679 inset;
+}
+
+.admin-app :deep(.el-select__selected-item),
+.admin-app :deep(.el-input__inner),
+.admin-app :deep(.el-date-editor .el-input__inner) {
+  color: var(--admin-text);
+}
+
+.admin-app :deep(.el-button) {
+  border-radius: 7px;
+}
+
+.admin-app :deep(.el-button--primary) {
+  --el-button-bg-color: #178bc2;
+  --el-button-border-color: #45c9f2;
+  --el-button-hover-bg-color: #2aa4dc;
+}
+
+.admin-app :deep(.el-table) {
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: #12375d;
+  --el-table-row-hover-bg-color: #12365f;
+  --el-table-border-color: #1a4166;
+  --el-table-text-color: #b7d4e7;
+  --el-table-header-text-color: #c5e8f7;
+  width: 100%;
+}
+
+.admin-app :deep(.el-table td.el-table__cell) {
+  background: transparent;
+  color: #c0d8e9;
+}
+
+.admin-app :deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: rgba(39, 91, 139, 0.24);
+}
+
+.admin-app :deep(.el-table__body tr:hover > td.el-table__cell) {
+  background: rgba(65, 145, 195, 0.22) !important;
+}
+
+.admin-app :deep(.el-table .cell) {
+  line-height: 1.45;
+}
+
+.admin-app :deep(.el-table__fixed),
+.admin-app :deep(.el-table__fixed-right) {
+  background: #102b50;
+}
+
+.admin-app :deep(.el-table__fixed td.el-table__cell),
+.admin-app :deep(.el-table__fixed-right td.el-table__cell) {
+  background: #102b50;
+}
+
+.admin-app :deep(.el-table__fixed .el-table__row--striped td.el-table__cell),
+.admin-app :deep(.el-table__fixed-right .el-table__row--striped td.el-table__cell) {
+  background: #15385f;
+}
+
+.admin-app :deep(.el-table th.el-table__cell) {
+  background: #12375d;
+}
+
+.admin-app :deep(.el-table__inner-wrapper::before) {
+  background: #1a4166;
+}
+
+.admin-app :deep(.el-drawer) {
+  background: #0a1f3c;
+  color: var(--admin-text);
+}
+
+.admin-app :deep(.el-drawer__header) {
+  margin-bottom: 10px;
+  color: var(--admin-text);
+}
+
+.admin-app :deep(.el-pagination) {
+  --el-pagination-bg-color: #123c67;
+  --el-pagination-button-bg-color: #123c67;
+  --el-pagination-text-color: #b7d4e9;
+  --el-pagination-button-color: #b7d4e9;
+  --el-pagination-hover-color: var(--admin-cyan);
+}
+
+.admin-app :deep(.el-pagination button:disabled) {
+  background: #0d2745;
+}
+
+@media (max-width: 1180px) {
+  .admin-app {
+    --admin-sidebar-width: 220px;
+  }
+
+  .admin-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-app {
+    display: block;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .admin-sidebar {
+    height: auto;
+    max-height: none;
+    padding: 16px 12px 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--admin-line);
+  }
+
+  .admin-brand {
+    padding-bottom: 16px;
+  }
+
+  .admin-menu {
+    width: auto;
+    flex: 1 1 150px;
+  }
+
+  .admin-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .admin-brand {
+    width: 100%;
+  }
+
+  .admin-swagger {
+    width: auto;
+    margin-top: 0;
+  }
+
+  .admin-main {
+    height: auto;
+    min-height: calc(100vh - 180px);
+    overflow: visible;
+  }
+
+  .admin-top {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 16px;
+  }
+
+  .admin-top-actions {
+    justify-content: flex-start;
+  }
+
+  .admin-content {
+    padding: 18px 12px 28px;
+    overflow: visible;
+  }
+
+  .admin-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-chart {
+    height: 300px;
+  }
+}
+
+@media (max-width: 460px) {
+  .admin-toolbar label {
+    min-width: 100%;
+    flex-basis: 100%;
+  }
+
+  .admin-toolbar button {
+    flex: 1 1 calc(50% - 6px);
+  }
+
+  .admin-panel {
+    padding: 14px;
+  }
+
+  .admin-chart {
+    min-height: 220px;
+    height: 270px;
+  }
+}
 </style>
 

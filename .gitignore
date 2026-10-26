@@ -24,3 +24,6 @@ dist/
 # Keep the large local source database dumps out of normal Git commits.
 /database/weather_data.sql
 /weather_db.sql
+
+# Codex local memory is workspace metadata, not project content.
+.workbuddy-ai/
