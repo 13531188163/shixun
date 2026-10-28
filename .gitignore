@@ -21,7 +21,8 @@ dist/
 
 *.log
 
-# Keep the large local source database dumps out of normal Git commits.
+# Keep the 170 MB local source database dumps out of normal Git commits.
+# The compressed, cloneable archive is tracked at database/weather_data.sql.gz.
 /database/weather_data.sql
 /weather_db.sql
 

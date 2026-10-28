@@ -45,7 +45,8 @@
 ```text
 weatherdemo/
 ├── AGENTS.md, README.md, requirements.txt, .env.example
-├── database/weather_data.sql       # 原始业务数据资产（只读）
+├── database/weather_data.sql.gz    # Git 跟踪的压缩原始数据资产
+├── database/weather_data.sql       # 从压缩包恢复后的本地只读文件
 ├── docs/                           # 规范、API、验收报告和截图
 └── weather_sys/
     ├── app.py                      # Flask 后端启动入口
@@ -71,7 +72,14 @@ cd weatherdemo
 
 ### 2\. 导入 SQL 数据文件
 
-通过 MySQL 命令行导入项目内的只读原始数据文件。若数据库尚未创建，可先执行：
+原始 SQL 约 163 MiB，GitHub 不允许作为普通文件提交；仓库提供了
+`database/weather_data.sql.gz` 压缩副本。先在项目根目录恢复只读 SQL 文件：
+
+```bash
+python -c "import gzip,shutil; shutil.copyfileobj(gzip.open('database/weather_data.sql.gz','rb'), open('database/weather_data.sql','wb'))"
+```
+
+恢复后，通过 MySQL 命令行导入项目内的只读原始数据文件。若数据库尚未创建，可先执行：
 
 ```sql
 CREATE DATABASE weather_db
@@ -185,7 +193,8 @@ weatherdemo/
 ├── README.md
 ├── requirements.txt
 ├── .env.example
-├── database/weather_data.sql       # 原始业务数据资产（只读）
+├── database/weather_data.sql.gz    # Git 跟踪的压缩原始数据资产
+├── database/weather_data.sql       # 从压缩包恢复后的本地只读文件
 ├── docs/                           # 规范、API、验收报告和截图
 └── weather_sys/
     ├── app.py                      # Flask 启动入口
@@ -195,7 +204,11 @@ weatherdemo/
 
 ### 数据库与环境变量
 
-数据库为 `weather_db`，原始数据文件为 `database/weather_data.sql`，请先启动 MySQL，再执行 `mysql -u root -p weather_db < database/weather_data.sql`（已有数据库时无需重复导入）。根目录 `.env.example` 包含 `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME`、`DB_READ_TIMEOUT`、Flask 端口和 CORS 配置；真实 `.env` 已忽略，不应提交。
+数据库为 `weather_db`。Git clone 后先按上文从 `database/weather_data.sql.gz` 恢复
+`database/weather_data.sql`，再启动 MySQL 并执行
+`mysql -u root -p weather_db < database/weather_data.sql`（已有数据库时无需重复导入）。
+根目录 `.env.example` 包含 `DB_HOST`、`DB_PORT`、`DB_USER`、`DB_PASSWORD`、`DB_NAME`、
+`DB_READ_TIMEOUT`、Flask 端口和 CORS 配置；真实 `.env` 已忽略，不应提交。
 
 ### 推荐启动方式
 

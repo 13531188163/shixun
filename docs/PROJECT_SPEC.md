@@ -156,3 +156,214 @@ Phase 6 后端验收已完成，REST API 契约已冻结，状态记录在
 
 如果确实需要修改 API，必须同步更新 `API_SPEC.md`、`openapi.yaml`、后端
 测试和前端调用，并在文档中记录变更原因和兼容影响。
+
+## 11. 开发环境配置指导
+
+可直接交给组员执行的独立版本见 [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md)。
+
+本节是 weatherdemo 的本地环境配置指引，目标是让新成员在不修改业务代码和原始数据的前提下，完成 MySQL、Flask、Vue 3 和 ECharts 的安装、配置与启动。命令以 Windows PowerShell 为主；Linux/macOS 使用对应的 `python3`、`source` 和 `cp` 命令即可。
+
+### 11.1 推荐版本与职责
+
+| 技术 | 推荐版本 | 用途 |
+| --- | --- | --- |
+| Python | 3.11 或 3.12 | Flask 后端和测试 |
+| MySQL | 8.0.x（验收环境为 8.0.43） | 唯一业务数据源 |
+| Node.js | 20 LTS | Vue/Vite 前端构建与开发服务器 |
+| npm | 随 Node.js 安装，建议 10.x 或更高 | 安装 `package-lock.json` 中锁定的前端依赖 |
+| Git | 当前稳定版 | 代码和文档版本管理 |
+| 浏览器 | Chrome、Edge 或 Firefox | Dashboard 验证 |
+
+ECharts、Vue Router、Axios 和 Element Plus 已在
+`weather_sys/font/weather_font/package.json` 中声明，不需要单独下载安装。后端依赖以根目录
+`requirements.txt` 为准，不要为了运行本项目额外安装 Pandas、SQLAlchemy 或其他未声明依赖。
+
+### 11.2 环境文件和端口
+
+配置文件只提交示例，不提交真实密码、令牌或个人环境文件：
+
+```text
+weatherdemo/
+├── .env.example                         # 后端和数据库示例配置
+├── .env                                  # 本机复制生成，不提交
+├── database/weather_data.sql.gz          # Git 跟踪的压缩原始数据资产
+├── database/weather_data.sql             # 从压缩包恢复，本机只读
+└── weather_sys/font/weather_font/
+    ├── .env.example                      # Vite 示例配置
+    └── .env                              # 前端本机配置，不提交
+```
+
+| 服务 | 默认地址 | 说明 |
+| --- | --- | --- |
+| MySQL | `127.0.0.1:3306` | 数据库服务 |
+| Flask API | `http://127.0.0.1:5000` | `/api/*` 接口和后端管理页 |
+| Vite | `http://localhost:5173` | Vue 开发服务器和 Dashboard |
+
+后端和前端在本地开发时分开运行。Vite 将 `/api` 代理到 `127.0.0.1:5000`，Vue 不得直接连接 MySQL。
+
+### 11.3 MySQL 配置与数据导入
+
+1. 安装 MySQL 8.0 并启动 MySQL 服务，确认客户端可执行：
+
+   ```powershell
+   mysql --version
+   ```
+
+2. 使用 root 或数据库管理员创建数据库。字符集必须保持 `utf8mb4`：
+
+   ```sql
+   CREATE DATABASE IF NOT EXISTS weather_db
+     DEFAULT CHARACTER SET utf8mb4
+     COLLATE utf8mb4_unicode_ci;
+   ```
+
+3. 原始 SQL 约 163 MiB，超过 GitHub 普通文件限制，因此 `database/weather_data.sql`
+   按 `.gitignore` 排除；Git 跟踪的 `database/weather_data.sql.gz` 是同一文件的压缩副本。
+   如果本地还没有 SQL 文件，先在项目根目录恢复：
+
+   ```powershell
+   python -c "import gzip,shutil; shutil.copyfileobj(gzip.open('database/weather_data.sql.gz','rb'), open('database/weather_data.sql','wb'))"
+   ```
+
+   原始 SQL 只能导入，禁止直接编辑。
+
+   在 CMD 或 Git Bash 中执行：
+
+   ```bash
+   mysql -u root -p --default-character-set=utf8mb4 weather_db < database/weather_data.sql
+   mysql -u root -p weather_db < database/migrations/20261014_weather_temperature_indexes.sql
+   ```
+
+   PowerShell 不接受某些版本中的 `<` 重定向语法时，请打开 CMD/Git Bash 执行以上命令，或调用本机 MySQL `bin` 目录下的 `mysql.exe`。
+
+4. 应用运行时建议使用只读账号，而不是 root。以下语句应由管理员执行，并将密码替换为本机随机密码：
+
+   ```sql
+   CREATE USER IF NOT EXISTS 'weather_app'@'127.0.0.1'
+     IDENTIFIED BY 'replace_with_local_password';
+   GRANT SELECT ON weather_db.* TO 'weather_app'@'127.0.0.1';
+   FLUSH PRIVILEGES;
+   ```
+
+   如果 `DB_HOST` 使用 `localhost`，需要为 `weather_app@localhost` 单独建立授权；MySQL 会区分 `localhost` 和 `127.0.0.1`。
+
+5. 导入后只做只读校验，不要使用 `DROP`、`TRUNCATE` 或全表 `DELETE`：
+
+   ```sql
+   USE weather_db;
+   SHOW TABLES;
+   SELECT COUNT(*) AS weather_count FROM weather_data;
+   SELECT COUNT(*) AS air_quality_count FROM air_quality_data;
+   SELECT MAX(date) AS latest_date FROM weather_data;
+   ```
+
+   `database/migrations/20261014_weather_temperature_indexes.sql` 是独立性能迁移，不属于原始 dump。已有数据库重复执行前，应先检查索引是否存在。
+
+### 11.4 Flask 后端配置
+
+在项目根目录执行：
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
+```
+
+编辑根目录 `.env`，至少填写以下配置：
+
+```dotenv
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=weather_app
+DB_PASSWORD=replace_with_local_password
+DB_NAME=weather_db
+DB_READ_TIMEOUT=30
+
+FLASK_HOST=0.0.0.0
+FLASK_PORT=5000
+FLASK_DEBUG=true
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+# 本地可以留空；共享环境和部署环境应设置随机令牌。
+ADMIN_API_TOKEN=
+```
+
+启动后端：
+
+```powershell
+python weather_sys/app.py
+```
+
+另开终端检查健康接口：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:5000/api/health
+```
+
+预期结果是 HTTP 200，响应中的 `code` 为 `200`，并且 `data.application` 与 `data.database` 均为 `ok`。如果数据库不可用，接口应返回统一的错误结构，而不是泄漏密码、连接串或 SQL 细节。
+
+### 11.5 Vue 3、Vite 和 ECharts 配置
+
+打开第二个终端：
+
+```powershell
+cd weather_sys/font/weather_font
+Copy-Item .env.example .env
+node --version
+npm --version
+npm ci
+npm run dev
+```
+
+前端 `.env` 默认保持：
+
+```dotenv
+VITE_API_BASE_URL=/api
+```
+
+浏览器打开 `http://localhost:5173`。如果后端不是 `127.0.0.1:5000`，需要同步修改
+`vite.config.js` 中的 `/api` 代理目标；生产环境应由反向代理提供同源 `/api`，不要在组件中写死数据库地址。
+
+构建生产前端：
+
+```powershell
+npm run build
+npm run preview
+```
+
+`npm ci` 会严格使用 `package-lock.json`。只有在明确升级依赖时才使用 `npm install`，并提交对应的 lockfile 变更。
+
+### 11.6 推荐启动顺序与验证
+
+每次新环境按以下顺序操作：
+
+1. 启动 MySQL，确认 `weather_db`、三张表和性能迁移存在。
+2. 激活 `.venv`，启动 Flask，确认 `/api/health` 返回数据库可用。
+3. 安装并启动 Vue/Vite，打开 Dashboard。
+4. 在页面中选择省份、城市、区县和观测日期，确认数据来自接口而非前端固定值。
+
+代码验证可以使用：
+
+```powershell
+python -m unittest discover -s tests -v
+cd weather_sys/font/weather_font
+npm run test:map
+npm run test:comparison
+npm run test:dashboard
+npm run build
+```
+
+### 11.7 常见故障处理
+
+| 现象 | 优先检查 |
+| --- | --- |
+| `Can't connect to MySQL server` | MySQL 服务是否启动、`DB_HOST`/`DB_PORT` 是否正确、防火墙和端口占用 |
+| `Access denied for user` | `.env` 用户名密码、MySQL 用户 host 是否与 `DB_HOST` 匹配、授权是否执行 |
+| `/api/health` 返回 500 | 后端日志、数据库名、三张表和迁移索引是否存在 |
+| 页面请求 `/api` 失败 | Flask 是否运行在 5000 端口、Vite 代理目标是否正确、CORS 是否包含 5173 |
+| `npm` 或 `node` 不是命令 | 安装 Node.js LTS，重新打开终端并确认 PATH；不要混用损坏的全局 npm 路径 |
+| 导入 SQL 找不到文件 | 从仓库中的 `database/weather_data.sql.gz` 恢复 `database/weather_data.sql`；不要用空表或假数据替代 |
+
+所有环境配置都必须继续遵守：原始 SQL 只读、真实数据优先、`.env` 不提交、前端不直连 MySQL、`latest` 表示历史库按观测日期取得的最新记录而不是实时天气。

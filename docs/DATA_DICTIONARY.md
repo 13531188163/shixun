@@ -8,6 +8,10 @@
 
 原始文件：database/weather_data.sql
 
+原始 SQL 约 163 MiB，仓库以 `database/weather_data.sql.gz` 压缩副本跟踪它，以避免
+超过 GitHub 普通文件大小限制。导入前先恢复为 `database/weather_data.sql`；恢复后的
+文件只读，不能直接编辑或用其他数据替换。
+
 ## 2. 表清单
 
 | 表名 | 作用 | SQL dump 规模估计 | 状态 |

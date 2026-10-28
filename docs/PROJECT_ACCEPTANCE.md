@@ -23,7 +23,12 @@ Flask 负责统一响应、参数校验和业务服务调用；Vue 只通过 Axi
 
 ## 4. 数据库状态
 
-数据库为 `weather_db`，业务原始资产为 `database/weather_data.sql`。验收环境健康检查为 `database=ok`，统计到 `weather_data` 834,971 条、`air_quality_data` 262 条，天气最新观测日期为 2026-05-22，空气快照时间为 2026-05-31 17:40:21。系统不会修改原始数据，也不会用随机数或固定样例补齐缺失字段。`wind_data` 当前没有可供展示的记录时，页面按空值规则显示占位状态。
+数据库为 `weather_db`，业务原始资产为 `database/weather_data.sql`；Git 中以
+`database/weather_data.sql.gz` 保存其压缩副本，clone 后可按环境配置文档恢复。
+验收环境健康检查为 `database=ok`，统计到 `weather_data` 834,971 条、`air_quality_data`
+262 条，天气最新观测日期为 2026-05-22，空气快照时间为 2026-05-31 17:40:21。
+系统不会修改原始数据，也不会用随机数或固定样例补齐缺失字段。`wind_data` 当前没有
+可供展示的记录时，页面按空值规则显示占位状态。
 
 ## 5. API 验收
 
